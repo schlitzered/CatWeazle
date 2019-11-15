@@ -1,0 +1,1096 @@
+openapi: 3.0.0
+info:
+  description: This is the CatWeazle API server
+  version: 1.0.0
+  title: Swagger CatWeazle
+  contact:
+    email: stephan.schultchen@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+tags:
+  - name: Authenticate
+    description: Authentication Related Stuff
+  - name: Instances
+    description: Instance Related Stuff
+  - name: Permissions
+    description: Permissions Related Stuff
+  - name: Users
+    description: User Related Stuff
+paths:
+  /authenticate:
+    delete:
+      tags:
+        - Authenticate
+      description: Delete current authentication token
+      responses:
+        "200":
+          description: Empty response on success
+    post:
+      tags:
+        - Authenticate
+      description: Authenticate user and return authentication token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Authenticate_POST"
+        description: Authentication credentials
+      responses:
+        "201":
+          description: Empty response, with session headers set, on success
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Authenticate_POST_result"
+        "400":
+          description: One or More parameters are invalid
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Invalid authentication information, or valid authentication token
+            present
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+  "/instances/{instance}":
+    delete:
+      tags:
+        - Instances
+      description: Delete Resource
+      parameters:
+        - name: instance
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Empty response on success
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags:
+        - Instances
+      description: Get Resource
+      parameters:
+        - name: instance
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+        - description: "Filter attributes, valid values: id, dns_indicator, fqdn, ip_address, ipa_otp"
+          in: query
+          name: fields
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Instance Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Instance_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "Resource not found"
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags:
+        - Instances
+      description: Create new Resource
+      parameters:
+        - name: instance
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Instance_POST"
+        description: Recource Body
+      responses:
+        "201":
+          description: Created resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Instance_GET"
+        "400":
+          description: One or More parameters are invalid
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: ID already exists
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+  /instances/_search:
+    get:
+      tags:
+        - Instances
+      description: Search Resources
+      parameters:
+        - name: instances
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - name: dns_indicator
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - name: ip_address
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - name: fqdn
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - description: "Filter attributes, valid values: id, dns_indicator, fqdn, ip_address, ipa_otp"
+          in: query
+          name: fields
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: "Sort results, prefix with - to invert, valid values: id"
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: "pagination limit, valid values: 10, 25, 50, 100, 250, 500, 1000"
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of instance objects
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Instance_GETQ"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+  "/permissions/{permission}":
+    delete:
+      tags:
+        - Permissions
+      description: Delete resource
+      parameters:
+        - name: permission
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Empty response on success
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      tags:
+        - Permissions
+      description: Get matching permission
+      parameters:
+        - name: permission
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+        - description: "Filter attributes, valid values: id, permissions, users"
+          in: query
+          name: fields
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Permission Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Permission_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Resource not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags:
+        - Permissions
+      description: Create Resource
+      parameters:
+        - name: permission
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Permission_POST"
+        description: The resource JSON representation you want to create
+      responses:
+        "201":
+          description: Created resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Permission_GET"
+        "400":
+          description: One or More parameters are invalid
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: Resource already exists
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      tags:
+        - Permissions
+      description: Update Resource
+      parameters:
+        - name: permission
+          in: path
+          description: Resource ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Permission_PUT"
+        description: Updated resource
+      responses:
+        "200":
+          description: Permission Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Permission_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+  /permissions/_search:
+    get:
+      tags:
+        - Permissions
+      description: Get all matching Permissions
+      parameters:
+        - name: permission
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - name: permissions
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - name: user
+          in: query
+          description: "filter: regular expression"
+          required: false
+          schema:
+            type: string
+        - description: "Filter attributes, valid values: id, permissions, users"
+          in: query
+          name: fields
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: "Sort results, prefix with - to invert, valid values: id"
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: "pagination limit, valid values: 10, 25, 50, 100, 250, 500, 1000"
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of permission objects
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Permission_GETQ"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+  /users/_search:
+    get:
+      description: Get all matching Users
+      parameters:
+        - description: "filter: regular expression"
+          in: query
+          name: id
+          required: false
+          schema:
+            type: string
+        - description: "Filter attributes, valid values: id, admin, backend, backend_ref,
+            email, name"
+          in: query
+          name: fields
+          required: false
+          schema:
+            type: string
+        - description: "Sort results, prefix with - to invert, valid values: id, email,
+            admin, name"
+          in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+        - description: pagination index
+          in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+        - description: "pagination limit, valid values: 10, 25, 50, 100, 250, 500, 1000"
+          in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of user object
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/User_GETQ"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+  "/users/{user}":
+    delete:
+      description: Delete existing user.
+      parameters:
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Empty response on success
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+    get:
+      description: Get get user
+      parameters:
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+        - description: "Filter attributes, valid values: id, admin, backend, backend_ref,
+            email, name"
+          in: query
+          name: fields
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/User_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+    post:
+      description: Create a new user, user id must be unique
+      parameters:
+        - description: User ID
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User_POST"
+        description: The user JSON representation you want to create
+      responses:
+        "201":
+          description: Created resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/User_GET"
+        "400":
+          description: One or More parameters are invalid
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: ID already exists
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+    put:
+      description: Update existing user.
+      parameters:
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/User_PUT"
+        description: JSON Document with attributes that should be updated
+      responses:
+        "200":
+          description: User Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/User_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+  "/users/{user}/credentials":
+    get:
+      description: Get all credentials for this user
+      parameters:
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document with all credentials for this scope
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Common_Credential_GETQ"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+    post:
+      description: Create a new set of API credentials for this user
+      parameters:
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Common_Credential_POST"
+        description: Description of the credential that is beeing created
+      responses:
+        "200":
+          description: Scope Credentials Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Common_Credential_POST_Result"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+  "/users/{user}/credentials/{credential}":
+    delete:
+      description: Delete user API credential.
+      parameters:
+        - description: Credential ID
+          in: path
+          name: credential
+          required: true
+          schema:
+            type: string
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Empty response on success
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+    get:
+      description: Get User API Credentials Resource
+      parameters:
+        - description: Credential ID
+          in: path
+          name: credential
+          required: true
+          schema:
+            type: string
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Credential Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Common_Credential_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+    put:
+      description: Update credential description
+      parameters:
+        - description: Credential ID
+          in: path
+          name: credential
+          required: true
+          schema:
+            type: string
+        - description: User ID, or _self, which points to the current user
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Common_Credential_POST"
+        description: updated description
+      responses:
+        "200":
+          description: Credential Resource
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Common_Credential_GET"
+        "403":
+          description: Insufficient permission
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: ID not found
+          content:
+            "*/*":
+              schema:
+                $ref: "#/components/schemas/Error"
+      tags:
+        - Users
+servers:
+  - url: /api/v1
+components:
+  requestBodies:
+    Common_Credential_POST:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Common_Credential_POST"
+      description: updated description
+    Common_Credential_POST2:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Common_Credential_POST"
+      description: Description of the credential that is beeing created
+    User_PUT:
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/User_PUT"
+      description: JSON Document with attributes that should be updated
+  schemas:
+    Authenticate_POST:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - user
+            - password
+          properties:
+            user:
+              type: string
+            password:
+              type: string
+    Authenticate_POST_result:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            token:
+              type: string
+    Common_Credential_GET:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            created:
+              type: string
+            description:
+              type: string
+    Common_Credential_GETQ:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/Common_Credential_GET"
+    Common_Credential_POST:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - description
+          properties:
+            description:
+              type: string
+    Common_Credential_POST_Result:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            created:
+              type: string
+            description:
+              type: string
+            secret:
+              type: string
+    Error:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              detail:
+                type: string
+              title:
+                type: string
+    Instance_GET:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            dns_indicator:
+              type: string
+            fqdn:
+              type: string
+            ip_address:
+              type: string
+            ipa_otp:
+              type: string
+    Instance_GETQ:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/Instance_GET"
+    Instance_POST:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - dns_indicator
+            - ip_address
+          properties:
+            dns_indicator:
+              type: string
+              pattern: '^([a-z0-9]+[a-z0-9-]*)NUM([a-z0-9\.-]*[a-z0-9])*$'
+            ip_address:
+              type: string
+              format: ipv4
+    Permission_GET:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            permissions:
+              type: array
+              items:
+                type: string
+            users:
+              type: array
+              items:
+                type: string
+    Permission_GETQ:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/Permission_GET"
+    Permission_POST:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - permissions
+            - users
+          properties:
+            permissions:
+              type: array
+              items:
+                type: string
+                pattern: ^(INSTANCE:(DELETE|POST))$
+            users:
+              type: array
+              items:
+                type: string
+    Permission_PUT:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            permissions:
+              type: array
+              items:
+                type: string
+                pattern: ^(INSTANCE:(DELETE|POST))$
+            users:
+              type: array
+              items:
+                type: string
+    User_GET:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+            backend:
+              type: string
+            backend_ref:
+              type: string
+            admin:
+              type: boolean
+            email:
+              type: string
+            name:
+              type: string
+    User_GETQ:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            results:
+              type: array
+              items:
+                $ref: "#/components/schemas/User_GET"
+    User_POST:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required:
+            - email
+            - name
+            - password
+          properties:
+            admin:
+              type: boolean
+            email:
+              type: string
+            name:
+              type: string
+            password:
+              type: string
+    User_PUT:
+      type: object
+      additionalProperties: false
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          properties:
+            admin:
+              type: boolean
+            email:
+              type: string
+            name:
+              type: string
+            password:
+              type: string

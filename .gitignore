@@ -1,0 +1,9 @@
+.idea
+AWSLambda/v-env
+AWSLambda/function.zip
+contrib/*ini
+init.sh
+terraform/
+vagrant/.vagrant
+venv
+*log*
