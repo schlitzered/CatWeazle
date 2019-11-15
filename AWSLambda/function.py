@@ -81,8 +81,7 @@ class CatWeazleLambda(object):
     def log(self):
         return self._logger
 
-    @staticmethod
-    def _get_role_credentials(role):
+    def _get_role_credentials(self, role):
         session = boto3.Session()
         sts = session.client("sts")
         role = sts.assume_role(
