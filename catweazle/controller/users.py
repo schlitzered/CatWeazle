@@ -79,7 +79,7 @@ class Users:
     async def search(self, request):
         await self.aa.require_admin(request)
         result = await self.users.search(
-            _ids=request.query.get('id', None),
+            _id=request.query.get('id', None),
             fields=request.query.get('fields', None),
             sort=request.query.get('sort', None),
             page=request.query.get('page', None),
