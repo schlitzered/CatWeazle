@@ -54,6 +54,10 @@ class CatWeazleLambda(object):
         return self._cw_role_arn
 
     @property
+    def cw_role_session_name(self):
+        return self._cw_role_session_name
+
+    @property
     def cw_secret(self):
         return self._cw_secret
 
@@ -82,7 +86,7 @@ class CatWeazleLambda(object):
         session = boto3.Session()
         sts = session.client("sts")
         role = sts.assume_role(
-            RoleArn=role, RoleSessionName="sts_lambda_session", DurationSeconds=900
+            RoleArn=role, RoleSessionName=self.cw_role_session_name, DurationSeconds=900
         )
         access_key = role["Credentials"]["AccessKeyId"]
         secret_key = role["Credentials"]["SecretAccessKey"]
