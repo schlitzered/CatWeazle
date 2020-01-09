@@ -3,10 +3,12 @@
 import argparse
 import logging
 import os
-import requests
 import subprocess
 import sys
 import stat
+import time
+
+import requests
 
 
 def main():
@@ -19,16 +21,20 @@ def main():
     parser.add_argument("--endpoint", dest="endpoint", action="store", required=True,
                         help="CatWeazle endpoint URL")
 
+    parser.add_argument("--retry", dest="retry", action="store", required=False,
+                        default=10, type=int, help="Number of retries for fetching CatWeazle data")
+
     parsed_args = parser.parse_args()
 
     register = Register(
         endpoint=parsed_args.endpoint,
+        retry=parsed_args.retry
     )
     register.run()
 
 
 class Register:
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, retry):
         self.log = logging.getLogger('application')
         self.log.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
@@ -41,6 +47,11 @@ class Register:
         self._fqdn = None
         self._instance_id = None
         self._otp = None
+        self._retry = retry
+
+    @property
+    def endpoint(self):
+        return self._endpoint
 
     @property
     def fqdn(self):
@@ -57,8 +68,8 @@ class Register:
         return self._otp
 
     @property
-    def endpoint(self):
-        return self._endpoint
+    def retry(self):
+        return self._retry
 
     def _run_cmd(self, args):
         self.log.info("running command: {0}".format(args))
@@ -70,11 +81,28 @@ class Register:
         return p.wait()
 
     def get_cw_data(self):
-        self.log.info("Getting Catweazle Data")
-        data = requests.get("{0}/api/v1/instances/{1}".format(self.endpoint, self.instance_id)).json()
-        self._fqdn = data['data']['fqdn']
-        self._otp = data['data']['ipa_otp']
-        self.log.info("Getting Catweazle Data, done")
+        self.log.info("Getting CatWeazle Data")
+        for _ in range(self.retry):
+            self.log.info("Trying to fetch CatWeazle data")
+            data = requests.get("{0}/api/v1/instances/{1}".format(self.endpoint, self.instance_id)).json()
+            if data.status_code is not 200:
+                self.log.warning(
+                    "Could not fetch instance data, http status was {0}, sleeping for 5 seconds".format(
+                        data.status_code
+                    )
+                )
+            elif 'ipa_otp' in data['data']:
+                self.log.info("Success fetching CatWeazle data")
+                self._fqdn = data['data']['fqdn']
+                self._otp = data['data']['ipa_otp']
+                self.log.info("Getting CatWeazle Data, done")
+                return
+            else:
+                self.log.warning(
+                    "instance data incomplete, otp token missing, sleeping for 5 seconds")
+            time.sleep(5)
+        self.log.fatal("instance data could not be fetched, quitting")
+        sys.exit(1)
 
     def get_scripts(self):
         path = '/etc/catweazle/register.d/'

@@ -127,7 +127,7 @@ class CatWeazleLambda(object):
             self.log.error("instance is missing the name indicator tag, exit")
             sys.exit(1)
         if payload['dns_indicator'].startswith('INSTANCEID'):
-            payload['dns_indicator'].replace('INSTANCEID', self.ec2_id)
+            payload['dns_indicator'] = payload['dns_indicator'].replace('INSTANCEID', self.ec2_id)
             self.log.info("setting indicator based on instance-id: {0}".format(payload['dns_indicator']))
         self.log.info("fetching instance dns indicator, done")
         self.log.info("fetching instance details, done")

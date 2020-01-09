@@ -30,7 +30,7 @@ License: MIT (see LICENSE for details)
     install_requires=[
         "aioboto3",
         "aiohttp",
-        "aiotask_context",
+        "aiotask-context",
         "ipaddress",
         "jsonschema",
         "motor",
