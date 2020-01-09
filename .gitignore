@@ -6,4 +6,4 @@ init.sh
 terraform/
 vagrant/.vagrant
 venv
-*log*
+*log

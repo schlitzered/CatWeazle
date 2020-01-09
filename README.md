@@ -14,7 +14,7 @@ The API is described using the openapi, aka swagger, definition.
 The definition can be found, when running the api server, [here](http://localhost:9000/static/swagger/index.html)
 
 The FQDN is constructed based on an so called "dns_indicator" which currently must contain the 
-placeholder "NUM", as well as on the "domain_suffix" from the configuration.
+placeholder "NUM", as well as on the "domain_suffix/" from the configuration.
 
 The placeholder NUM will be replaced with the next free number, based on what other instances already 
 use the same indicator.
@@ -24,8 +24,7 @@ For example, lets say the "domain_suffix" is ".example.com", and the "dns_indica
 The first instance we create, will get the name "www-1.example.com".
 The second instance we create will get "www-2.example.com".
 If we now delete the first instance, www-1.example.com will be freed.
-So the next instance we create with this indicator will get the FQDN "www-1.example.com"
-
+So the next instance we create with this indicator will get the FQDN "www-1.example.com",
 which can help in dynamic environments like auto scaling groups.
 
 
@@ -63,7 +62,7 @@ If the tag is absent, it will ignore the instance and quit.
 If the tag is present, the Lambda function will fetch the instance ip_address, instance_id 
 and the value of the tag and create the instance in the API server using a POST request.
 
-If the requests succeeds, the response will contain the designated IP FQDN for this instance.
+If the requests succeeds, the response will contain the designated FQDN for this instance.
 The Lambda function will then try to set the "Name" tag on the instance, to match the fqdn from the response.
 
 If the event is "terminated", the lambda function will try to remove the instance-id from the API Server.
