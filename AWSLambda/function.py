@@ -1,4 +1,5 @@
 import logging
+import json
 import os
 import sys
 
@@ -22,10 +23,12 @@ class CatWeazleLambda(object):
         self.log.setLevel(os.environ.get('CatWeazleLogLevel', logging.INFO))
         self._cw_endpoint = os.environ.get('CatWeazleEndPoint')
         self._cw_indicator_tag = os.environ.get('CatWeazleIndicatorTag')
+        self._cw_indicator_tmpl = os.environ.get('CatWeazleIndicatorTemplate', None)
         self._cw_role_arn = os.environ.get('CatWeazleRoleARN')
         self._cw_secret = os.environ.get('CatWeazleSecret')
         self._cw_secret_id = os.environ.get('CatWeazleSecretID')
         self._cw_role_session_name = os.environ.get('CatWeazleRoleSessionName', 'catweazle_session')
+        self._cw_post_create_lambda = os.environ.get('CatWeazlePostCreateLambda', None)
 
     @property
     def boto(self):
@@ -48,6 +51,14 @@ class CatWeazleLambda(object):
     @property
     def cw_indicator_tag(self):
         return self._cw_indicator_tag
+
+    @property
+    def cw_indicator_tmpl(self):
+        return self._cw_indicator_tmpl
+
+    @property
+    def catweazle_post_create_lambda(self):
+        return self._cw_post_create_lambda
 
     @property
     def cw_role_arn(self):
@@ -101,6 +112,29 @@ class CatWeazleLambda(object):
         )
         return session
 
+    def post_create_lambda(self):
+        self.log.info("calling post create lambda functions")
+        if not self._cw_post_create_lambda:
+            self.log.info("calling post create lambda functions, done")
+            return
+        self.log.info("getting session in this account")
+        session = boto3.Session()
+        aws_lambda = session.client('lambda')
+        self.log.info("getting session in this account, done")
+        try:
+            for _function in self._cw_post_create_lambda.split(','):
+                self.log.info("calling post create lambda function {0}".format(_function))
+                response = aws_lambda.invoke(
+                    FunctionName=_function,
+                    InvocationType='Event',
+                    Payload=json.dumps(self.event)
+                )
+                self.log.info(response)
+                self.log.info("calling post create lambda function {0}, done".format(_function))
+        except Exception as err:
+            self.log.fatal(err)
+        self.log.info("calling post create lambda functions, done")
+
     def instance_create(self):
         self.log.info("registering new instance")
         self.log.info("fetching instance details")
@@ -121,11 +155,14 @@ class CatWeazleLambda(object):
         self.log.info("fetching instance dns indicator")
         for tag in instance.tags:
             if tag['Key'] == self.cw_indicator_tag:
-                payload['dns_indicator'] = tag['Value']
+                if self.cw_indicator_tmpl:
+                    payload['dns_indicator'] = self.cw_indicator_tmpl.format(tag['Value'])
+                else:
+                    payload['dns_indicator'] = tag['Value']
                 break
         if 'dns_indicator' not in payload:
             self.log.error("instance is missing the name indicator tag, exit")
-            sys.exit(1)
+            sys.exit(0)
         if payload['dns_indicator'].startswith('INSTANCEID'):
             payload['dns_indicator'] = payload['dns_indicator'].replace('INSTANCEID', self.ec2_id)
             self.log.info("setting indicator based on instance-id: {0}".format(payload['dns_indicator']))
@@ -149,6 +186,7 @@ class CatWeazleLambda(object):
                 self.log.info("setting Name tag of instance to {0}, done".format(fqdn))
             except botocore.exceptions.ClientError as err:
                 self.log.error("setting Name tag failed: {0}".format(err))
+        self.post_create_lambda()
         self.log.info("registering new instance, done")
 
     def instance_delete(self):
@@ -175,7 +213,7 @@ class CatWeazleLambda(object):
 
         if self.event['source'] != 'aws.ec2':
             self.log.fatal("got event from unexpected event source: {0}".format(self.event))
-            sys.exit(1)
+            sys.exit(0)
 
         self.ec2_id = self.event['detail']['instance-id']
         state = self.event['detail']['state']
@@ -184,10 +222,12 @@ class CatWeazleLambda(object):
 
         if state == 'pending':
             self.instance_create()
+        elif state == 'shutting-down':
+            self.instance_delete()
         elif state == 'terminated':
             self.instance_delete()
         else:
             self.log.fatal("got unexpected event state {0}".format(state))
-            sys.exit(1)
+            sys.exit(0)
 
         self.log.info("finished working on {0}".format(self.event['id']))
