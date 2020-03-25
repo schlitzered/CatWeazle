@@ -84,8 +84,10 @@ class Register:
         self.log.info("Getting CatWeazle Data")
         for _ in range(self.retry):
             self.log.info("Trying to fetch CatWeazle data")
-            data = requests.get("{0}/api/v1/instances/{1}".format(self.endpoint, self.instance_id)).json()
-            if data.status_code is not 200:
+            data = requests.get("{0}/api/v1/instances/{1}".format(self.endpoint, self.instance_id))
+            status_code = data.status_code
+            data = data.json()
+            if status_code is not 200:
                 self.log.warning(
                     "Could not fetch instance data, http status was {0}, sleeping for 5 seconds".format(
                         data.status_code
