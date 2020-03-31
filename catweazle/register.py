@@ -90,7 +90,7 @@ class Register:
             if status_code is not 200:
                 self.log.warning(
                     "Could not fetch instance data, http status was {0}, sleeping for 5 seconds".format(
-                        data.status_code
+                        status_code
                     )
                 )
             elif 'ipa_otp' in data['data']:
