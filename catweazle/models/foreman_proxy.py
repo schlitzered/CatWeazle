@@ -97,12 +97,11 @@ class ForemanProxy(object):
                 return True
 
     async def create_dns(self, fqdn, ip_address):
-        self.log.info("{0}:foreman: creating DNS Records for {1} with ip {2}".format(self.name, fqdn, ip_address))
         await self.create_arpa_dns(fqdn=fqdn, ip_address=ip_address)
         await self.create_forward_dns(fqdn=fqdn, ip_address=ip_address)
-        self.log.info("{0}:foreman: creating DNS Records for {1} with ip {2}, done".format(self.name, fqdn, ip_address))
 
     async def create_arpa_dns(self, fqdn, ip_address):
+        self.log.info("{0}:foreman: creating DNS PTR Records for {1} with ip {2}".format(self.name, fqdn, ip_address))
         if not self.dns_arpa_enable:
             self.log.info("{0}:foreman: reverse DNS is disabled".format(self.name))
             return
@@ -114,8 +113,10 @@ class ForemanProxy(object):
             body_ptr.add_field('value', ip_addr.reverse_pointer)
             body_ptr.add_field('type', 'PTR')
             await self.request_post(url, body_ptr)
+        self.log.info("{0}:foreman: creating DNS PTR Records for {1} with ip {2}, done".format(self.name, fqdn, ip_address))
 
     async def create_forward_dns(self, fqdn, ip_address):
+        self.log.info("{0}:foreman: creating DNS A Records for {1} with ip {2}".format(self.name, fqdn, ip_address))
         if not self.dns_forward_enable:
             self.log.info("{0}:foreman: forward DNS is disabled".format(self.name))
             return
@@ -124,16 +125,16 @@ class ForemanProxy(object):
         body_a.add_field('fqdn', fqdn)
         body_a.add_field('value', ip_address)
         body_a.add_field('type', 'A')
+        self.log.info("{0}:foreman: creating DNS A Records for {1} with ip {2}, done".format(self.name, fqdn, ip_address))
 
         await self.request_post(url, body_a)
 
     async def delete_dns(self, fqdn, ip_address):
-        self.log.info("{0}:foreman: deleting DNS Records for {1} with ip {2}".format(self.name, fqdn, ip_address))
-        await self.delete_arpa_dns(ip_address=ip_address)
-        await self.delete_forward_dns(fqdn=fqdn)
-        self.log.info("{0}:foreman: deleting DNS Records for {1} with ip {2}, done".format(self.name, fqdn, ip_address))
+        await self.delete_arpa_dns(fqdn=fqdn, ip_address=ip_address)
+        await self.delete_forward_dns(fqdn=fqdn, ip_address=ip_address)
 
-    async def delete_arpa_dns(self, ip_address):
+    async def delete_arpa_dns(self, ip_address, fqdn):
+        self.log.info("{0}:foreman: deleting DNS PTR Records for {1} with ip {2}".format(self.name, fqdn, ip_address))
         if not self.dns_arpa_enable:
             self.log.info("{0}:foreman: reverse DNS is disabled".format(self.name))
             return
@@ -141,13 +142,16 @@ class ForemanProxy(object):
         if self.arpa_responsible(ip_address=ip_addr):
             url_ptr = "{0}{1}{2}/PTR".format(self.url, '/dns/', ip_addr.reverse_pointer)
             await self.request_delete(url_ptr)
+        self.log.info("{0}:foreman: deleting DNS PTR Records for {1} with ip {2}, done".format(self.name, fqdn, ip_address))
 
-    async def delete_forward_dns(self, fqdn):
+    async def delete_forward_dns(self, ip_address, fqdn):
+        self.log.info("{0}:foreman: deleting DNS A Records for {1} with ip {2}".format(self.name, fqdn, ip_address))
         if not self.dns_forward_enable:
             self.log.info("{0}:foreman: forward DNS is disabled".format(self.name))
             return
         url_a = "{0}{1}{2}/A".format(self.url, '/dns/', fqdn)
         await self.request_delete(url_a)
+        self.log.info("{0}:foreman: deleting DNS A Records for {1} with ip {2}, done".format(self.name, fqdn, ip_address))
 
     async def create_realm(self, fqdn):
         self.log.info("{0}:foreman: creating realm entry for {1}".format(self.name, fqdn))
@@ -166,3 +170,16 @@ class ForemanProxy(object):
         url = "{0}{1}{2}/{3}".format(self.url, '/realm/', self.realm, fqdn)
         self.log.info("{0}:foreman: deleting realm entry for {1}, done".format(self.name, fqdn))
         await self.request_delete(url)
+
+
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: proto = await self._create_connection(req, traces, timeout)
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: File "/opt/catweazle/lib64/python3.6/site-packages/aiohttp/connector.py", line 859, in _create_connection
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: req, traces, timeout)
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: File "/opt/catweazle/lib64/python3.6/site-packages/aiohttp/connector.py", line 1004, in _create_direct_connection
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: raise last_exc
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: File "/opt/catweazle/lib64/python3.6/site-packages/aiohttp/connector.py", line 986, in _create_direct_connection
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: req=req, client_error=client_error)
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: File "/opt/catweazle/lib64/python3.6/site-packages/aiohttp/connector.py", line 943, in _wrap_create_connection
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: raise client_error(req.connection_key, exc) from exc
+#Apr 29 09:50:57 catweazle-3.prod.us-east-1.aws.linux.factset.com catweazle[19156]: aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host fmsmart-dns-aws-1.prod.us-east-1.aws....9', 8443)]
+#Hint: Some lines were ellipsized, use -l to show in full.

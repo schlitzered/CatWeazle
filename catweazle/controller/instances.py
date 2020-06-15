@@ -60,7 +60,7 @@ class Instances:
                     ip_address=_instance['data']['ip_address']
                 )
             except ForemanConnError as err:
-                self.log.error(err)
+                self.log.error(err.msg)
         for aws in self.aws_route53:
             try:
                 await aws.delete(
@@ -68,14 +68,14 @@ class Instances:
                     ip_address=_instance['data']['ip_address']
                 )
             except ForemanConnError as err:
-                self.log.error(err)
+                self.log.error(err.msg)
         try:
             if self.foreman_realm:
                 await self.foreman_realm.delete_realm(
                     fqdn=_instance['data']['fqdn'],
                 )
         except ForemanConnError as err:
-            self.log.error(err)
+            self.log.error(err.msg)
         result = await self.instances.delete(instance)
         return json_response(result)
 
@@ -86,6 +86,8 @@ class Instances:
         except ModelError as err:
             try:
                 _result = await self.instances.get(instance, 'id,ip_address')
+                self.log.info("remote ip is: {0}".format(request.remote))
+                self.log.info(request.headers)
                 if request.remote != _result['data']['ip_address']:
                     raise err
             except ResourceNotFound:
@@ -122,7 +124,7 @@ class Instances:
                 result = await self.instances.set_ipa_otp(instance, ipa_otp)
         except BaseError as err:
             self.log.error("something went wrong, rolling back")
-            self.log.error(err)
+            self.log.error(err.msg)
             await self.delete(request)
             raise BackEndError('Could not create instance in backend, please check logs')
         return json_response(result, status=201)

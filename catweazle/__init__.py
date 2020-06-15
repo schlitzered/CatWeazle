@@ -9,6 +9,7 @@ import time
 
 from aiohttp import web
 import aiotask_context as context
+import aiohttp_remotes
 import jsonschema
 from motor.motor_asyncio import AsyncIOMotorClient
 import pymongo
@@ -168,7 +169,7 @@ class CatWeazleRest:
             aa=m_aa, credentials=m_users_cred, users=m_users
         )
 
-        app = web.Application(middlewares=[request_id, error_catcher])
+        app = web.Application(middlewares=[request_id, error_catcher, aiohttp_remotes.XForwardedRelaxed().middleware])
 
         app.router.add_static('/static/', path=str('{0}/static'.format(os.path.dirname(__file__))))
 
