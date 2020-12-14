@@ -27,6 +27,7 @@ class CatWeazleLambda(object):
         self._cw_role_arn = os.environ.get('CatWeazleRoleARN')
         self._cw_secret = os.environ.get('CatWeazleSecret')
         self._cw_secret_id = os.environ.get('CatWeazleSecretID')
+        self._cw_name_target_tag = os.environ.get('CatWeazleNameTargetTag', None)
         self._cw_role_session_name = os.environ.get('CatWeazleRoleSessionName', 'catweazle_session')
         self._cw_post_create_lambda = os.environ.get('CatWeazlePostCreateLambda', None)
 
@@ -75,6 +76,10 @@ class CatWeazleLambda(object):
     @property
     def cw_secret_id(self):
         return self._cw_secret_id
+    
+    @property
+    def cw_name_target_tag(self):
+        return 
 
     @property
     def ec2_id(self):
@@ -180,9 +185,15 @@ class CatWeazleLambda(object):
         except requests.exceptions.RequestException as err:
             self.log.error("could not create instance {0}".format(err))
         if fqdn:
+            fqdn_tag_name = 'Name'
+            if self.cw_name_target_tag:
+                for tag in instance.tags:
+                    if tag['Key'] == self.cw_name_target_tag:
+                        fqdn_tag_name = tag['Value']
+                        break
             try:
                 self.log.info("setting Name tag of instance to {0}".format(fqdn))
-                instance.create_tags(Tags=[{'Key': 'Name', 'Value': fqdn}])
+                instance.create_tags(Tags=[{'Key': fqdn_tag_name, 'Value': fqdn}])
                 self.log.info("setting Name tag of instance to {0}, done".format(fqdn))
             except botocore.exceptions.ClientError as err:
                 self.log.error("setting Name tag failed: {0}".format(err))
