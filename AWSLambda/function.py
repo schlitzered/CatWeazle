@@ -7,6 +7,8 @@ import boto3
 import botocore.exceptions
 import requests
 
+__version__ = '0.0.18'
+
 
 def lambda_handler(event, context):
     cat_weazle_lambda = CatWeazleLambda(context=context, event=event)
@@ -79,7 +81,7 @@ class CatWeazleLambda(object):
     
     @property
     def cw_name_target_tag(self):
-        return 
+        return self._cw_name_target_tag
 
     @property
     def ec2_id(self):
@@ -186,17 +188,23 @@ class CatWeazleLambda(object):
             self.log.error("could not create instance {0}".format(err))
         if fqdn:
             fqdn_tag_name = 'Name'
+            self.log.info("setting Name tag to default Name")
             if self.cw_name_target_tag:
+                self.log.info("checking for override value on tag {0}".format(self.cw_name_target_tag))
                 for tag in instance.tags:
                     if tag['Key'] == self.cw_name_target_tag:
                         fqdn_tag_name = tag['Value']
+                        self.log.info("overriding Name tag to {0}".format(fqdn_tag_name))
                         break
             try:
-                self.log.info("setting Name tag of instance to {0}".format(fqdn))
+                self.log.info("setting {0} tag of instance to {1}".format(
+                    fqdn_tag_name, fqdn))
                 instance.create_tags(Tags=[{'Key': fqdn_tag_name, 'Value': fqdn}])
-                self.log.info("setting Name tag of instance to {0}, done".format(fqdn))
+                self.log.info("setting {0} tag of instance to {1}, done".format(
+                    fqdn_tag_name, fqdn))
             except botocore.exceptions.ClientError as err:
-                self.log.error("setting Name tag failed: {0}".format(err))
+                self.log.error("setting {0} tag failed: {1}".format(
+                    fqdn_tag_name, err))
         self.post_create_lambda()
         self.log.info("registering new instance, done")
 
@@ -220,6 +228,7 @@ class CatWeazleLambda(object):
 
     def run(self):
         self.log.info("start working on {0}".format(self.event['id']))
+        self.log.info("script version: {0}".format(__version__))
         self.log.info("event payload: {0}".format(self.event))
 
         if self.event['source'] != 'aws.ec2':
