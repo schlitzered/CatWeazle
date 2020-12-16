@@ -111,8 +111,7 @@ Redis is used as a Session store, for user sessions.
 
 Status
 ------
-The application under active development, and in a working status. But it is not battle tested, 
-and most likely contains bugs.
+The application under active development, and in a working status. 
 
 The external API´s are fairly stable, and i do not expect a need for breaking changes.
 
