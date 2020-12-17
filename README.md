@@ -260,7 +260,7 @@ or at least change the admin password.
 
 You can now start the API server like this:
 ```
-schlitzer@schlitzer-XPS-13-9360:~$ catweazle indices run
+schlitzer@schlitzer-XPS-13-9360:~$ catweazle run
 ======== Running on http://0.0.0.0:9000 ========
 (Press CTRL+C to quit)
 
