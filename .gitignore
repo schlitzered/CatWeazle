@@ -1,9 +1,12 @@
 .idea
 AWSLambda/v-env
 AWSLambda/function.zip
+AWSLambda/package.sh
 contrib/*ini
+dist/
 init.sh
 terraform/
 vagrant/.vagrant
 venv
 *log
+*__pycache__*

@@ -7,7 +7,7 @@ import boto3
 import botocore.exceptions
 import requests
 
-__version__ = '0.0.18'
+__version__ = '0.0.19'
 
 
 def lambda_handler(event, context):
@@ -19,7 +19,6 @@ class CatWeazleLambda(object):
     def __init__(self, event, context):
         self._boto = None
         self._context = context
-        self._ec2_id = None
         self._event = event
         self._logger = logging.getLogger()
         self.log.setLevel(os.environ.get('CatWeazleLogLevel', logging.INFO))
@@ -29,9 +28,12 @@ class CatWeazleLambda(object):
         self._cw_role_arn = os.environ.get('CatWeazleRoleARN')
         self._cw_secret = os.environ.get('CatWeazleSecret')
         self._cw_secret_id = os.environ.get('CatWeazleSecretID')
+        self._cw_name_tag = os.environ.get('CatWeazleNameTag', 'Name')
+        self._cw_name_tag_if_emtpy = os.environ.get('CatWeazleNameTagIfEmpty', True)
         self._cw_name_target_tag = os.environ.get('CatWeazleNameTargetTag', None)
         self._cw_role_session_name = os.environ.get('CatWeazleRoleSessionName', 'catweazle_session')
         self._cw_post_create_lambda = os.environ.get('CatWeazlePostCreateLambda', None)
+        self._instance = None
 
     @property
     def boto(self):
@@ -78,22 +80,33 @@ class CatWeazleLambda(object):
     @property
     def cw_secret_id(self):
         return self._cw_secret_id
-    
+
+    @property
+    def cw_name_tag(self):
+        return self._cw_name_tag
+
+    @property
+    def cw_name_tag_if_empty(self):
+        return self._cw_name_tag_if_emtpy
+
     @property
     def cw_name_target_tag(self):
         return self._cw_name_target_tag
 
     @property
     def ec2_id(self):
-        return self._ec2_id
-
-    @ec2_id.setter
-    def ec2_id(self, value):
-        self._ec2_id = value
+        return self.event['detail']['instance-id']
 
     @property
     def event(self):
         return self._event
+
+    @property
+    def instance(self):
+        if not self._instance:
+            ec2 = self.boto.resource("ec2")
+            self._instance = ec2.Instance(self.ec2_id)
+        return self._instance
 
     @property
     def log(self):
@@ -144,69 +157,76 @@ class CatWeazleLambda(object):
 
     def instance_create(self):
         self.log.info("registering new instance")
+
         self.log.info("fetching instance details")
-        ec2 = self.boto.resource("ec2")
-        instance = ec2.Instance(self.ec2_id)
-
-        url = "{0}/api/v1/instances/{1}".format(self.cw_endpoint, self.ec2_id)
-        headers = {
-            'X-ID': self.cw_secret_id,
-            'X-SECRET': self.cw_secret
-        }
-        self.log.info("fetching instance ip")
-        payload = {
-            'ip_address': instance.private_ip_address
-        }
-        self.log.info("fetching instance ip, done")
-
-        self.log.info("fetching instance dns indicator")
-        for tag in instance.tags:
-            if tag['Key'] == self.cw_indicator_tag:
-                if self.cw_indicator_tmpl:
-                    payload['dns_indicator'] = self.cw_indicator_tmpl.format(tag['Value'])
-                else:
-                    payload['dns_indicator'] = tag['Value']
-                break
-        if 'dns_indicator' not in payload:
-            self.log.error("instance is missing the name indicator tag, exit")
-            sys.exit(0)
-        if payload['dns_indicator'].startswith('INSTANCEID'):
-            payload['dns_indicator'] = payload['dns_indicator'].replace('INSTANCEID', self.ec2_id)
-            self.log.info("setting indicator based on instance-id: {0}".format(payload['dns_indicator']))
-        self.log.info("fetching instance dns indicator, done")
+        payload = dict()
+        payload['ip_address'] = self.instance.private_ip_address
+        payload['dns_indicator'] = self.get_dns_indicator()
         self.log.info("fetching instance details, done")
-        fqdn = None
+
         try:
             self.log.info("registering instance in catweazle")
+            url = "{0}/api/v1/instances/{1}".format(self.cw_endpoint, self.ec2_id)
+            headers = {
+                'X-ID': self.cw_secret_id,
+                'X-SECRET': self.cw_secret
+            }
             resp = requests.post(url, headers=headers, json={'data': payload})
             self.log.info("status: {0}".format(resp.status_code))
             if resp.status_code != 201:
                 self.log.error("request error: {0}".format(resp.text))
+                sys.exit(0)
             fqdn = resp.json()['data']['fqdn']
+            fqdn_tag_name = self.get_fqdn_tag_name()
+            self.set_ec2_tag(fqdn=fqdn, fqdn_tag_name=fqdn_tag_name)
+            if not self.get_tag('Name') and self.cw_name_tag_if_empty:
+                self.log.info("Also setting Name tag, since it is currently empty.")
+                self.set_ec2_tag(fqdn=fqdn, fqdn_tag_name='Name')
             self.log.info("registering instance in catweazle, done")
         except requests.exceptions.RequestException as err:
             self.log.error("could not create instance {0}".format(err))
-        if fqdn:
-            fqdn_tag_name = 'Name'
-            self.log.info("setting Name tag to default Name")
-            if self.cw_name_target_tag:
-                self.log.info("checking for override value on tag {0}".format(self.cw_name_target_tag))
-                for tag in instance.tags:
-                    if tag['Key'] == self.cw_name_target_tag:
-                        fqdn_tag_name = tag['Value']
-                        self.log.info("overriding Name tag to {0}".format(fqdn_tag_name))
-                        break
-            try:
-                self.log.info("setting {0} tag of instance to {1}".format(
-                    fqdn_tag_name, fqdn))
-                instance.create_tags(Tags=[{'Key': fqdn_tag_name, 'Value': fqdn}])
-                self.log.info("setting {0} tag of instance to {1}, done".format(
-                    fqdn_tag_name, fqdn))
-            except botocore.exceptions.ClientError as err:
-                self.log.error("setting {0} tag failed: {1}".format(
-                    fqdn_tag_name, err))
         self.post_create_lambda()
         self.log.info("registering new instance, done")
+
+    def set_ec2_tag(self, fqdn, fqdn_tag_name):
+        try:
+            self.log.info("setting {0} tag of instance to {1}".format(
+                fqdn_tag_name, fqdn))
+            self.instance.create_tags(Tags=[{'Key': fqdn_tag_name, 'Value': fqdn}])
+            self.log.info("setting {0} tag of instance to {1}, done".format(
+                fqdn_tag_name, fqdn))
+        except botocore.exceptions.ClientError as err:
+            self.log.error("setting {0} tag failed: {1}".format(
+                fqdn_tag_name, err))
+
+    def get_dns_indicator(self):
+        self.log.info("fetching instance dns indicator")
+        dns_indicator = self.get_tag(self.cw_indicator_tag)
+        if not dns_indicator:
+            self.log.error("instance is missing the name indicator tag, exit")
+            sys.exit(0)
+        if dns_indicator.startswith('INSTANCEID'):
+            dns_indicator = dns_indicator.replace('INSTANCEID', self.ec2_id)
+        if self.cw_indicator_tmpl:
+            dns_indicator = self.cw_indicator_tmpl.format(dns_indicator)
+        self.log.info("using indicator {0}".format(dns_indicator))
+        self.log.info("fetching instance dns indicator, done")
+        return dns_indicator
+
+    def get_fqdn_tag_name(self):
+        fqdn_tag_name = self.cw_name_tag
+        self.log.info("setting Name tag to default {0}".format(fqdn_tag_name))
+        if self.cw_name_target_tag:
+            name_target_tag = self.get_tag(self.cw_name_target_tag)
+            if name_target_tag:
+                self.log.info("overriding Name tag to {0}".format(name_target_tag))
+                return name_target_tag
+        return fqdn_tag_name
+
+    def get_tag(self, tag_name):
+        for tag in self.instance.tags:
+            if tag['Key'] == tag_name:
+                return tag['Value']
 
     def instance_delete(self):
         self.log.info("deleting instance")
@@ -219,7 +239,7 @@ class CatWeazleLambda(object):
             self.log.info("deleting instance in catweazle")
             resp = requests.delete(url, headers=headers)
             self.log.info("status: {0}".format(resp.status_code))
-            if resp.status_code != '200':
+            if resp.status_code != 200:
                 self.log.error("request error: {0}".format(resp.text))
             self.log.info("deleting instance in catweazle, done")
         except requests.exceptions.RequestException as err:
@@ -235,7 +255,6 @@ class CatWeazleLambda(object):
             self.log.fatal("got event from unexpected event source: {0}".format(self.event))
             sys.exit(0)
 
-        self.ec2_id = self.event['detail']['instance-id']
         state = self.event['detail']['state']
 
         self.log.info("got aws.ec2 {0} event for instance {1}".format(state, self.ec2_id))
