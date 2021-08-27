@@ -1,0 +1,11 @@
+aioboto3
+aiohttp
+aiotask-context
+aiohttp-remotes
+ipaddress
+jsonschema
+motor
+pyyaml
+passlib
+requests
+aioredis

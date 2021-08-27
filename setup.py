@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='CatWeazle',
-    version='0.0.19',
+    version='0.0.20',
     description='CatWeazle, dynamic DNS and Redhat IdM/FreeIPA registration system',
     long_description="""
 dynamically create and delete DNS records for volatile linux systems, as well as redhat IDM de/registration.

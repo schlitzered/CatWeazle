@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: CatWeazle
+Version: 0.0.20
+Summary: CatWeazle, dynamic DNS and Redhat IdM/FreeIPA registration system
+Home-page: https://github.com/schlitzered/CatWeazle
+Author: schlitzer
+Author-email: stephan.schultchen@gmail.com
+License: MIT
+Keywords: freeipa,redhat idm,dns
+Platform: posix
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+License-File: LICENSE.txt
+
+
+dynamically create and delete DNS records for volatile linux systems, as well as redhat IDM de/registration.
+
+Copyright (c) 2019, Stephan Schultchen.
+
+License: MIT (see LICENSE for details)
+    
+

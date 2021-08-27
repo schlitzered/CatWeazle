@@ -34,13 +34,13 @@ def main():
     register = Register(
         endpoint=parsed_args.endpoint,
         retry=parsed_args.retry,
-        pre_delay=parsed_args.pre_delay,
+        pre_sleep=parsed_args.pre_sleep,
     )
     register.run()
 
 
 class Register:
-    def __init__(self, endpoint, retry, pre_delay):
+    def __init__(self, endpoint, retry, pre_sleep):
         self.log = logging.getLogger('application')
         self.log.setLevel(logging.DEBUG)
         handler = logging.StreamHandler(sys.stdout)
@@ -53,7 +53,7 @@ class Register:
         self._fqdn = None
         self._instance_id = None
         self._otp = None
-        self._pre_delay = pre_delay
+        self._pre_sleep = pre_sleep
         self._retry = retry
 
     @property
@@ -75,8 +75,8 @@ class Register:
         return self._otp
 
     @property
-    def pre_delay(self):
-        return self._pre_delay
+    def pre_sleep(self):
+        return self._pre_sleep
 
     @property
     def retry(self):
@@ -156,9 +156,9 @@ class Register:
 
     def run(self):
         self.log.info("Starting registration process")
-        self.log.info("sleeping for {0} seconds".format(self.pre_delay))
-        time.sleep(self.pre_delay)
-        self.log.info("sleeping for {0} seconds, done".format(self.pre_delay))
+        self.log.info("sleeping for {0} seconds".format(self.pre_sleep))
+        time.sleep(self.pre_sleep)
+        self.log.info("sleeping for {0} seconds, done".format(self.pre_sleep))
         self.log.info("instance-id is {0}".format(self.instance_id))
         self.get_cw_data()
         self.log.info("designated FQDN is {0}".format(self.fqdn))
