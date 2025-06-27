@@ -1,6 +1,7 @@
 import logging
 from typing import List
 import ssl
+import sys
 
 from catweazle.errors import BackendError
 
@@ -9,7 +10,7 @@ import ipaddress
 from pydantic.networks import IPv4Network
 
 
-class CrudForeman(object):
+class CrudForeman:
     def __init__(
         self,
         log: logging.Logger,
@@ -35,6 +36,13 @@ class CrudForeman(object):
         self._ssl_crt = ssl_crt
         self._ssl_key = ssl_key
         self._url = url
+        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+        try:
+            context.load_cert_chain(certfile=self.ssl_crt, keyfile=self.ssl_key)
+        except OSError as err:
+            self.log.error(f"{self.name}:foreman: could not create ssl context: {err}")
+            sys.exit(1)
+        self._http = httpx.AsyncClient(verify=context)
 
     @property
     def log(self):
@@ -78,13 +86,7 @@ class CrudForeman(object):
 
     @property
     def http(self) -> httpx.AsyncClient:
-        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        try:
-            context.load_cert_chain(certfile=self.ssl_crt, keyfile=self.ssl_key)
-        except OSError as err:
-            self.log.error(err)
-            raise BackendError
-        return httpx.AsyncClient(verify=context)
+        return self._http
 
     async def request_delete(self, url):
         url = f"{self.url}/{url}"
