@@ -1,4 +1,5 @@
 .idea
+.env
 AWSLambda/v-env
 AWSLambda/function.zip
 AWSLambda/package.sh

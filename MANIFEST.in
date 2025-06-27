@@ -1,5 +1,5 @@
 include setup.py
 include README.rst
 include LICENSE.txt
-include catweazle/static/swagger.yaml
-include catweazle/static/swagger/*
+include dlm_engine/static/swagger.yaml
+include dlm_engine/static/swagger/*
