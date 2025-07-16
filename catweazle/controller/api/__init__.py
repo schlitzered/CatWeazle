@@ -6,6 +6,7 @@ from fastapi import APIRouter
 
 from catweazle.authorize import Authorize
 
+from catweazle.controller.api.v1 import ControllerApiV1
 from catweazle.controller.api.v2 import ControllerApiV2
 
 from catweazle.crud.credentials import CrudCredentials
@@ -45,6 +46,16 @@ class ControllerApi:
                 http=http,
             ).router,
             prefix="/v2",
+            responses={404: {"description": "Not found"}},
+        )
+
+        self.router.include_router(
+            ControllerApiV1(
+                log=log,
+                authorize=authorize,
+                crud_instances=crud_instances,
+            ).router,
+            prefix="/v1",
             responses={404: {"description": "Not found"}},
         )
 

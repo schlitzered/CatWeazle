@@ -79,6 +79,8 @@ class CrudLdap:
                 await self.ldap_pool.put(conn)
 
     async def check_user_credentials(self, user: str, password: str):
+        if not self.ldap_url:
+            raise AuthenticationError
         client = bonsai.LDAPClient(self.ldap_url)
         user_name = self.ldap_user_pattern.format(user)
         client.set_credentials("SIMPLE", user_name, password)

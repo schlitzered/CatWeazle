@@ -173,6 +173,8 @@ def setup_foreman_backend(log: logging.Logger) -> List[CrudForeman]:
         log.info("no foreman backend configured")
     backends = list()
     realm = False
+    if not settings.foreman:
+        return backends
     for name, config in settings.foreman.items():
         log.info(f"setting up foreman backend with name {name}")
         if realm and config.realmenable:

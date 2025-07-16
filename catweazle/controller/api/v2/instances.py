@@ -8,6 +8,8 @@ from fastapi import Request
 
 from catweazle.authorize import Authorize
 
+from catweazle.errors import SessionCredentialError
+
 from catweazle.crud.instances import CrudInstances
 from catweazle.crud.foreman import CrudForeman
 from catweazle.errors import BackendError
@@ -154,7 +156,14 @@ class ControllerApiV2Instances:
         request: Request,
         fields: Set[filter_literal] = Query(default=filter_list),
     ):
-        await self.authorize.require_user(request=request)
+        try:
+            await self.authorize.require_user(request=request)
+            fields.discard("ipa_otp")
+        except SessionCredentialError as err:
+            result = await self.crud_instances.get(_id=instance_id, fields=['id', "ip_address"])
+            if result.ip_address != request.client.host:
+                raise err
+
         return await self.crud_instances.get(_id=instance_id, fields=list(fields))
 
     async def search(
@@ -182,6 +191,7 @@ class ControllerApiV2Instances:
         ),
     ):
         await self.authorize.require_user(request=request)
+        fields.discard("ipa_otp")
         return await self.crud_instances.search(
             _id=instance_id,
             dns_indicator=dns_indicator,

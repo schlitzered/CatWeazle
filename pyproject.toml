@@ -19,7 +19,6 @@ classifiers = [
 
 [project.scripts]
 catweazle = "catweazle:main.main"
-catweazle_register = "catweazle:register.main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["catweazle"]

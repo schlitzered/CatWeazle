@@ -30,7 +30,6 @@ sort_literal = Literal[
     "ip_address",
 ]
 
-
 class ModelV2InstanceGet(BaseModel):
     id: Optional[StrictStr] = None
     dns_indicator: Optional[StrictStr] = None
