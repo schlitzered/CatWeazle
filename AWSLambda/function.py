@@ -5,7 +5,7 @@ import sys
 
 import boto3
 import botocore.exceptions
-import requests
+import httpx
 
 __version__ = '0.0.19'
 
@@ -41,7 +41,7 @@ class CatWeazleLambda(object):
             return self.boto
         account_id = self.event["account"]
         access_role_arn = self.cw_role_arn.format(account_id)
-        self.log.info("Assuming role {0} for account {1}".format(access_role_arn, account_id))
+        self.log.info(f"Assuming role {access_role_arn} for account {account_id}")
         self._boto = self._get_session(access_role_arn)
         return self._boto
 
@@ -132,6 +132,25 @@ class CatWeazleLambda(object):
         )
         return session
 
+    def catweazle_api(self, method, path, body, api_version='v1') -> httpx.Response:
+        url = f"{self.cw_endpoint}/api/{api_version}/{path}"
+        headers = {
+            'X-ID': self.cw_secret_id,
+            'X-SECRET-ID': self.cw_secret_id,
+            'X-SECRET': self.cw_secret
+        }
+        if api_version == 'v1':
+            body = {'data': body}
+        try:
+            resp = httpx.request(method, url, headers=headers, json=body)
+        except httpx.HTTPError as err:
+            self.log.fatal(f"request error: {err}")
+            raise err
+        if resp.status_code != 200:
+            self.log.error(f"request error: {resp.text}")
+        return resp
+
+
     def post_create_lambda(self):
         self.log.info("calling post create lambda functions")
         if not self._cw_post_create_lambda:
@@ -143,61 +162,96 @@ class CatWeazleLambda(object):
         self.log.info("getting session in this account, done")
         try:
             for _function in self._cw_post_create_lambda.split(','):
-                self.log.info("calling post create lambda function {0}".format(_function))
+                self.log.info(f"calling post create lambda function {_function}")
                 response = aws_lambda.invoke(
                     FunctionName=_function,
                     InvocationType='Event',
                     Payload=json.dumps(self.event)
                 )
                 self.log.info(response)
-                self.log.info("calling post create lambda function {0}, done".format(_function))
+                self.log.info(f"calling post create lambda function {_function}, done")
         except Exception as err:
             self.log.fatal(err)
         self.log.info("calling post create lambda functions, done")
 
+    def instance_delete(self):
+        self.log.info("deleting instance")
+        url = "{0}/api/v1/instances/{1}".format(self.cw_endpoint, self.ec2_id)
+        headers = {
+            'X-ID': self.cw_secret_id,
+            'X-SECRET': self.cw_secret
+        }
+        try:
+            self.log.info("deleting instance in catweazle")
+            resp = httpx.delete(url, headers=headers)
+            self.log.info("status: {0}".format(resp.status_code))
+            if resp.status_code != 200:
+                self.log.error("request error: {0}".format(resp.text))
+            self.log.info("deleting instance in catweazle, done")
+        except httpx.HTTPError as err:
+            self.log.error("could not remove instance {0}".format(err))
+            return
+        self.log.info("deleting instance, done")
+
     def instance_create(self):
         self.log.info("registering new instance")
-
         self.log.info("fetching instance details")
-        payload = dict()
-        payload['ip_address'] = self.instance.private_ip_address
-        payload['dns_indicator'] = self.get_dns_indicator()
+        body = dict()
+        body['ip_address'] = self.instance.private_ip_address
+        body['dns_indicator'] = self.get_dns_indicator()
         self.log.info("fetching instance details, done")
-
         try:
-            self.log.info("registering instance in catweazle")
-            url = "{0}/api/v1/instances/{1}".format(self.cw_endpoint, self.ec2_id)
-            headers = {
-                'X-ID': self.cw_secret_id,
-                'X-SECRET': self.cw_secret
-            }
-            resp = requests.post(url, headers=headers, json={'data': payload})
-            self.log.info("status: {0}".format(resp.status_code))
-            if resp.status_code != 201:
-                self.log.error("request error: {0}".format(resp.text))
-                sys.exit(0)
-            fqdn = resp.json()['data']['fqdn']
-            fqdn_tag_name = self.get_fqdn_tag_name()
-            self.set_ec2_tag(fqdn=fqdn, fqdn_tag_name=fqdn_tag_name)
-            if not self.get_tag('Name') and self.cw_name_tag_if_empty:
-                self.log.info("Also setting Name tag, since it is currently empty.")
-                self.set_ec2_tag(fqdn=fqdn, fqdn_tag_name='Name')
-            self.log.info("registering instance in catweazle, done")
-        except requests.exceptions.RequestException as err:
+            resp_data = self.instance_create_v2(body)
+            if not resp_data:
+                resp_data = self.instance_create_v1(body)
+            if not resp_data:
+                self.log.fatal("could not create instance")
+                sys.exit(1)
+        except httpx.HTTPError as err:
             self.log.error("could not create instance {0}".format(err))
+            return
+        fqdn = resp_data['fqdn']
+        fqdn_tag_name = self.get_fqdn_tag_name()
+        self.set_ec2_tag(fqdn=fqdn, fqdn_tag_name=fqdn_tag_name)
+        if not self.get_tag('Name') and self.cw_name_tag_if_empty:
+            self.log.info("Also setting Name tag, since it is currently empty.")
+            self.set_ec2_tag(fqdn=fqdn, fqdn_tag_name='Name')
         self.post_create_lambda()
         self.log.info("registering new instance, done")
 
+    def instance_create_v1(self, body):
+        try:
+            self.log.info("registering instance in catweazle v1")
+            path = f"/instances/{self.ec2_id}"
+            resp = self.catweazle_api(method='POST', path=path, body=body, api_version="v1")
+            self.log.info("status: {0}".format(resp.status_code))
+            if resp.status_code != 201:
+                self.log.error("request error: {0}".format(resp.text))
+            return resp.json()["data"]
+        except httpx.HTTPError as err:
+            self.log.error("could not create instance {0}".format(err))
+            raise
+
+    def instance_create_v2(self, body):
+        try:
+            self.log.info("registering instance in catweazle v2")
+            path = f"/instances/{self.ec2_id}"
+            resp = self.catweazle_api(method='POST', path=path, body=body, api_version="v2")
+            self.log.info(f"status: {resp.status_code}")
+            if resp.status_code != 201:
+                self.log.error(f"request error: {resp.text}")
+            return resp.json()
+        except httpx.HTTPError as err:
+            self.log.error(f"could not create instance {err}")
+            raise
+
     def set_ec2_tag(self, fqdn, fqdn_tag_name):
         try:
-            self.log.info("setting {0} tag of instance to {1}".format(
-                fqdn_tag_name, fqdn))
+            self.log.info(f"setting {fqdn_tag_name} tag of instance to {fqdn}")
             self.instance.create_tags(Tags=[{'Key': fqdn_tag_name, 'Value': fqdn}])
-            self.log.info("setting {0} tag of instance to {1}, done".format(
-                fqdn_tag_name, fqdn))
+            self.log.info(f"setting {fqdn_tag_name} tag of instance to {fqdn}, done")
         except botocore.exceptions.ClientError as err:
-            self.log.error("setting {0} tag failed: {1}".format(
-                fqdn_tag_name, err))
+            self.log.error(f"setting {fqdn_tag_name} tag failed: {err}")
 
     def get_dns_indicator(self):
         self.log.info("fetching instance dns indicator")
@@ -209,17 +263,17 @@ class CatWeazleLambda(object):
             dns_indicator = dns_indicator.replace('INSTANCEID', self.ec2_id)
         if self.cw_indicator_tmpl:
             dns_indicator = self.cw_indicator_tmpl.format(dns_indicator)
-        self.log.info("using indicator {0}".format(dns_indicator))
+        self.log.info(f"using indicator {dns_indicator}")
         self.log.info("fetching instance dns indicator, done")
         return dns_indicator
 
     def get_fqdn_tag_name(self):
         fqdn_tag_name = self.cw_name_tag
-        self.log.info("setting Name tag to default {0}".format(fqdn_tag_name))
+        self.log.info(f"setting Name tag to default {fqdn_tag_name}")
         if self.cw_name_target_tag:
             name_target_tag = self.get_tag(self.cw_name_target_tag)
             if name_target_tag:
-                self.log.info("overriding Name tag to {0}".format(name_target_tag))
+                self.log.info(f"overriding Name tag to {name_target_tag}")
                 return name_target_tag
         return fqdn_tag_name
 
@@ -227,24 +281,7 @@ class CatWeazleLambda(object):
         for tag in self.instance.tags:
             if tag['Key'] == tag_name:
                 return tag['Value']
-
-    def instance_delete(self):
-        self.log.info("deleting instance")
-        url = "{0}/api/v1/instances/{1}".format(self.cw_endpoint, self.ec2_id)
-        headers = {
-            'X-ID': self.cw_secret_id,
-            'X-SECRET': self.cw_secret
-        }
-        try:
-            self.log.info("deleting instance in catweazle")
-            resp = requests.delete(url, headers=headers)
-            self.log.info("status: {0}".format(resp.status_code))
-            if resp.status_code != 200:
-                self.log.error("request error: {0}".format(resp.text))
-            self.log.info("deleting instance in catweazle, done")
-        except requests.exceptions.RequestException as err:
-            self.log.error("could not remove instance {0}".format(err))
-        self.log.info("deleting instance, done")
+        return None
 
     def run(self):
         self.log.info("start working on {0}".format(self.event['id']))
