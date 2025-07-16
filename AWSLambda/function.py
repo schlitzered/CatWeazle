@@ -176,22 +176,45 @@ class CatWeazleLambda(object):
 
     def instance_delete(self):
         self.log.info("deleting instance")
-        url = "{0}/api/v1/instances/{1}".format(self.cw_endpoint, self.ec2_id)
-        headers = {
-            'X-ID': self.cw_secret_id,
-            'X-SECRET': self.cw_secret
-        }
         try:
-            self.log.info("deleting instance in catweazle")
-            resp = httpx.delete(url, headers=headers)
-            self.log.info("status: {0}".format(resp.status_code))
-            if resp.status_code != 200:
-                self.log.error("request error: {0}".format(resp.text))
-            self.log.info("deleting instance in catweazle, done")
+            resp_data = self.instance_delete_v2()
+            if not resp_data:
+                resp_data = self.instance_delete_v1()
+            if not resp_data:
+                self.log.fatal("could not delete instance")
+                return
         except httpx.HTTPError as err:
-            self.log.error("could not remove instance {0}".format(err))
+            self.log.error(f"could not delete instance {err}")
             return
         self.log.info("deleting instance, done")
+
+    def instance_delete_v1(self):
+        try:
+            self.log.info("deleting instance in catweazle v1")
+            path = f"/instances/{self.ec2_id}"
+            resp = self.catweazle_api(method='DELETE', path=path, body=None, api_version="v1")
+            self.log.info(f"status: {resp.status_code}")
+            if resp.status_code != 200:
+                self.log.error(f"request error: {resp.text}")
+                return None
+            return resp.json()["data"]
+        except httpx.HTTPError as err:
+            self.log.error(f"could not delete instance {err}")
+            raise
+
+    def instance_delete_v2(self):
+        try:
+            self.log.info("deleting instance in catweazle v2")
+            path = f"/instances/{self.ec2_id}"
+            resp = self.catweazle_api(method='DELETE', path=path, body=None, api_version="v2")
+            self.log.info(f"status: {resp.status_code}")
+            if resp.status_code != 200:
+                self.log.error(f"request error: {resp.text}")
+                return None
+            return resp.json()
+        except httpx.HTTPError as err:
+            self.log.error(f"could not delete instance {err}")
+            raise
 
     def instance_create(self):
         self.log.info("registering new instance")
@@ -208,7 +231,7 @@ class CatWeazleLambda(object):
                 self.log.fatal("could not create instance")
                 sys.exit(1)
         except httpx.HTTPError as err:
-            self.log.error("could not create instance {0}".format(err))
+            self.log.error(f"could not create instance {err}")
             return
         fqdn = resp_data['fqdn']
         fqdn_tag_name = self.get_fqdn_tag_name()
@@ -224,12 +247,12 @@ class CatWeazleLambda(object):
             self.log.info("registering instance in catweazle v1")
             path = f"/instances/{self.ec2_id}"
             resp = self.catweazle_api(method='POST', path=path, body=body, api_version="v1")
-            self.log.info("status: {0}".format(resp.status_code))
+            self.log.info(f"status: {resp.status_code}")
             if resp.status_code != 201:
-                self.log.error("request error: {0}".format(resp.text))
+                self.log.error(f"request error: {resp.text}")
             return resp.json()["data"]
         except httpx.HTTPError as err:
-            self.log.error("could not create instance {0}".format(err))
+            self.log.error(f"could not create instance {err}")
             raise
 
     def instance_create_v2(self, body):
@@ -284,17 +307,17 @@ class CatWeazleLambda(object):
         return None
 
     def run(self):
-        self.log.info("start working on {0}".format(self.event['id']))
-        self.log.info("script version: {0}".format(__version__))
-        self.log.info("event payload: {0}".format(self.event))
+        self.log.info(f"start working on {self.event['id']}")
+        self.log.info(f"script version: {__version__}")
+        self.log.info(f"event payload: {self.event}")
 
         if self.event['source'] != 'aws.ec2':
-            self.log.fatal("got event from unexpected event source: {0}".format(self.event))
+            self.log.fatal(f"got event from unexpected event source: {self.event}")
             sys.exit(0)
 
         state = self.event['detail']['state']
 
-        self.log.info("got aws.ec2 {0} event for instance {1}".format(state, self.ec2_id))
+        self.log.info(f"got aws.ec2 {state} event for instance {self.ec2_id}")
 
         if state == 'pending':
             self.instance_create()
@@ -303,7 +326,7 @@ class CatWeazleLambda(object):
         elif state == 'terminated':
             self.instance_delete()
         else:
-            self.log.fatal("got unexpected event state {0}".format(state))
+            self.log.fatal(f"got unexpected event state {state}")
             sys.exit(0)
 
-        self.log.info("finished working on {0}".format(self.event['id']))
+        self.log.info(f"finished working on {self.event['id']}")
