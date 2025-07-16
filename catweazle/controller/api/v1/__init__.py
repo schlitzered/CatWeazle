@@ -19,7 +19,6 @@ class ControllerApiV1:
         self._router = APIRouter()
         self._log = log
 
-
         self.router.include_router(
             ControllerApiV1Instances(
                 log=log,

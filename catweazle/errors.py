@@ -76,10 +76,11 @@ class PermError(HTTPException):
             detail=f"Permissions error, you are not granted {permission} on this resource",
         )
 
+
 class HostNumRangeExceeded(HTTPException):
     def __init__(self, max_range):
         super(HostNumRangeExceeded, self).__init__(
             status_code=400,
             detail=f"Host number range exceeded for indicator {max_range}, "
-                   "please use a different indicator or remove existing hosts"
+            "please use a different indicator or remove existing hosts",
         )

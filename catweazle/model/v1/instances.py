@@ -24,7 +24,6 @@ sort_literal = Literal[
     "ip_address",
 ]
 
+
 class ModelV1InstanceGet(BaseModel):
     data: ModelV2InstanceGet
-
-

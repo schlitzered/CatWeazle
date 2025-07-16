@@ -64,7 +64,9 @@ class ControllerApiV1Instances:
             await self.authorize.require_user(request=request)
             fields.discard("ipa_otp")
         except SessionCredentialError as err:
-            result = await self.crud_instances.get(_id=instance_id, fields=['id', "ip_address"])
+            result = await self.crud_instances.get(
+                _id=instance_id, fields=["id", "ip_address"]
+            )
             if result.ip_address != request.client.host:
                 raise err
 
