@@ -22,6 +22,7 @@ from catweazle.model.v2.instances import sort_literal
 from catweazle.model.v2.instances import ModelV2InstanceGet
 from catweazle.model.v2.instances import ModelV2InstanceGetMulti
 from catweazle.model.v2.instances import ModelV2instancePost
+from catweazle.model.v2.instances import ModelV2instancePut
 
 
 class ControllerApiV2Instances:
@@ -70,6 +71,13 @@ class ControllerApiV2Instances:
             response_model=ModelV2InstanceGet,
             response_model_exclude_unset=True,
             methods=["GET"],
+        )
+        self.router.add_api_route(
+            "/{instance_id}",
+            self.update,
+            response_model=ModelV2InstanceGet,
+            response_model_exclude_unset=True,
+            methods=["PUT"],
         )
 
     @property
@@ -205,3 +213,18 @@ class ControllerApiV2Instances:
             page=page,
             limit=limit,
         )
+
+    async def update(
+        self,
+        data: ModelV2instancePut,
+        instance_id: str,
+        request: Request,
+        fields: Set[filter_literal] = Query(default=filter_list),
+    ):
+        await self.authorize.require_permission(
+            request=request, permission="INSTANCE:POST"
+        )
+        return await self.crud_instances.update(
+            _id=instance_id, payload=data, fields=list(fields)
+        )
+

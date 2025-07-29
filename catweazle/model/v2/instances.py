@@ -1,5 +1,6 @@
 import re
 from typing import get_args as typing_get_args
+from typing import Dict
 from typing import List
 from typing import Literal
 from typing import Optional
@@ -19,6 +20,7 @@ filter_literal = Literal[
     "fqdn",
     "ip_address",
     "ipa_otp",
+    "meta",
 ]
 
 filter_list = set(typing_get_args(filter_literal))
@@ -37,6 +39,7 @@ class ModelV2InstanceGet(BaseModel):
     fqdn: Optional[StrictStr] = None
     ip_address: Optional[StrictStr] = None
     ipa_otp: Optional[StrictStr] = None
+    meta: Optional[Dict[str, str]] = None
 
 
 class ModelV2InstanceGetMulti(BaseModel):
@@ -47,6 +50,7 @@ class ModelV2InstanceGetMulti(BaseModel):
 class ModelV2instancePost(BaseModel):
     dns_indicator: Optional[StrictStr] = None
     ip_address: IPv4Address
+    meta: Optional[Dict[str, str]] = None
 
     @staticmethod
     @field_validator("dns_indicator", mode="before")
@@ -57,3 +61,6 @@ class ModelV2instancePost(BaseModel):
                 f"dns_indicator does not match regex: {config.app.indicator_regex}"
             )
         return value
+
+class ModelV2instancePut(BaseModel):
+    meta: Optional[Dict[str, str]] = None

@@ -15,6 +15,7 @@ from catweazle.model.v2.common import sort_order_literal
 from catweazle.model.v2.instances import ModelV2InstanceGet
 from catweazle.model.v2.instances import ModelV2InstanceGetMulti
 from catweazle.model.v2.instances import ModelV2instancePost
+from catweazle.model.v2.instances import ModelV2instancePut
 
 
 class CrudInstances(CrudMongo):
@@ -126,6 +127,18 @@ class CrudInstances(CrudMongo):
             limit=limit,
         )
         return ModelV2InstanceGetMulti(**result)
+
+    async def update(
+        self,
+        _id: str,
+        payload: ModelV2instancePut,
+        fields: list,
+    ) -> ModelV2InstanceGet:
+        query = {"id": _id}
+        data = payload.model_dump()
+        result = await self._update(query=query, fields=fields, payload=data)
+        return ModelV2InstanceGet(**result)
+
 
     async def update_ipa_otp(
         self,
