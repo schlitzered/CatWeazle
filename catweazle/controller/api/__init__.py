@@ -16,6 +16,8 @@ from catweazle.crud.instances import CrudInstances
 from catweazle.crud.permissions import CrudPermissions
 from catweazle.crud.users import CrudUsers
 
+from catweazle.model import ModelApiVersions
+
 
 class ControllerApi:
     def __init__(
@@ -59,6 +61,15 @@ class ControllerApi:
             responses={404: {"description": "Not found"}},
         )
 
+        self.router.add_api_route(
+            "/version",
+            self.get_api_versions,
+            response_model=ModelApiVersions,
+            methods=["GET"],
+            tags=["api_version"],
+        )
+
+
     @property
     def router(self):
         return self._router
@@ -66,3 +77,7 @@ class ControllerApi:
     @property
     def log(self):
         return self._log
+
+    @staticmethod
+    async def get_api_versions() -> ModelApiVersions:
+        return ModelApiVersions(version="v2")
