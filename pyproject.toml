@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
+
+[project]
+name = "catweazle"
+version = "1.0.0"
+requires-python = ">=3.9"
+authors = [
+  {name = "Stephan.Schultchen", email = "stephan.schultchen@gmail.com"},
+]
+description = "catweazle, dynamic DNS and Redhat IdM/FreeIPA registration system"
+dynamic = ["dependencies"]
+license = {file = "LICENSE.txt"}
+keywords = []
+classifiers = [
+  "Programming Language :: Python"
+]
+
+[project.scripts]
+catweazle = "catweazle:main.main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["catweazle"]
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]
+
