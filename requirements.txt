@@ -6,7 +6,7 @@ bonsai==1.5.2
 certifi==2023.11.17
 cffi==1.16.0
 click==8.1.7
-cryptography==42.0.4
+cryptography==44.0.1
 dnspython==2.6.1
 email-validator==2.1.0.post1
 fastapi==0.115.6
