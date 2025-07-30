@@ -37,6 +37,7 @@ class CatWeazleLambda(object):
             "CatWeazleRoleSessionName", "catweazle_session"
         )
         self.cw_post_create_lambda = os.environ.get("CatWeazlePostCreateLambda", None)
+        self._instance = None
         self._validate_configuration()
 
     def _validate_configuration(self):
@@ -53,7 +54,7 @@ class CatWeazleLambda(object):
             self.log.fatal(
                 f"Missing required environment variables: {', '.join(missing)}"
             )
-            sys.exit(1)
+            sys.exit(0)
 
     @property
     def boto(self):
@@ -89,8 +90,10 @@ class CatWeazleLambda(object):
 
     @property
     def instance(self):
-        ec2 = self.boto.resource("ec2")
-        return ec2.Instance(self.ec2_id)
+        if not self._instance:
+            ec2 = self.boto.resource("ec2")
+            self._instance = ec2.Instance(self.ec2_id)
+        return self._instance
 
     @property
     def log(self):
@@ -136,7 +139,7 @@ class CatWeazleLambda(object):
                     return resp.json()["data"]
                 return resp.json()
         except httpx.HTTPError as err:
-            self.log.fatal(self._fmt_log_msg(f"request error: {err}"))
+            self.log.error(self._fmt_log_msg(f"request error: {err}"))
             raise err
 
     def post_create_lambda(self):
@@ -215,7 +218,7 @@ class CatWeazleLambda(object):
             )
         except httpx.HTTPError as err:
             self.log.error(self._fmt_log_msg(f"could not delete instance {err}"))
-            sys.exit(1)
+            sys.exit(0)
         self.log.info(self._fmt_log_msg("deleting instance, done"))
 
     def instance_update(self):
@@ -231,7 +234,7 @@ class CatWeazleLambda(object):
             )
         except httpx.HTTPError as err:
             self.log.error(self._fmt_log_msg(f"could not update instance {err}"))
-            sys.exit(1)
+            sys.exit(0)
         self.log.info(self._fmt_log_msg("update instance, done"))
 
     def set_ec2_tag(self, fqdn, fqdn_tag_name):
@@ -285,6 +288,7 @@ class CatWeazleLambda(object):
             result = self._get_tag(tag_name)
             if result:
                 return result
+            self.instance.reload()
             retry -= 1
             time.sleep(2)
         return None

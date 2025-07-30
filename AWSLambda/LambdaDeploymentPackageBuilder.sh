@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OUTPUT_FILE="catweazle-lambda-$(date +%Y%m%d-%H%M%S).tgz"
+OUTPUT_FILE="catweazle-lambda-$(date +%Y%m%d-%H%M%S).zip"
 TEMP_DIR=$(mktemp -d)
 
 cleanup() { rm -rf "${TEMP_DIR}"; }
@@ -24,8 +24,8 @@ if [[ -f "${PACKAGE_DIR}/requirements.txt" ]]; then
 fi
 
 find "${PACKAGE_DIR}" -type f -exec chmod 644 {} \;
-cd "${TEMP_DIR}"
-tar -czf "${SCRIPT_DIR}/${OUTPUT_FILE}" catweazle-lambda/
+cd "${PACKAGE_DIR}"
+zip -r "${SCRIPT_DIR}/${OUTPUT_FILE}" .
 
 echo "Created: ${OUTPUT_FILE}"
 echo "Size: $(du -h "${SCRIPT_DIR}/${OUTPUT_FILE}" | cut -f1)"
