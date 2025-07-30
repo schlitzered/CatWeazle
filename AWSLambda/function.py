@@ -2,6 +2,7 @@ import logging
 import json
 import os
 import sys
+import time
 
 import boto3
 import botocore.exceptions
@@ -36,7 +37,6 @@ class CatWeazleLambda(object):
             "CatWeazleRoleSessionName", "catweazle_session"
         )
         self.cw_post_create_lambda = os.environ.get("CatWeazlePostCreateLambda", None)
-        self._instance = None
         self._validate_configuration()
 
     def _validate_configuration(self):
@@ -89,10 +89,8 @@ class CatWeazleLambda(object):
 
     @property
     def instance(self):
-        if not self._instance:
-            ec2 = self.boto.resource("ec2")
-            self._instance = ec2.Instance(self.ec2_id)
-        return self._instance
+        ec2 = self.boto.resource("ec2")
+        return ec2.Instance(self.ec2_id)
 
     @property
     def log(self):
@@ -254,7 +252,7 @@ class CatWeazleLambda(object):
 
     def get_dns_indicator(self):
         self.log.info(self._fmt_log_msg("fetching instance dns indicator"))
-        dns_indicator = self.get_tag(self.cw_indicator_tag)
+        dns_indicator = self.get_tag(self.cw_indicator_tag, retry=10)
         if not dns_indicator:
             self.log.error(
                 self._fmt_log_msg("instance is missing the name indicator tag, exit")
@@ -280,7 +278,18 @@ class CatWeazleLambda(object):
                 return name_target_tag
         return fqdn_tag_name
 
-    def get_tag(self, tag_name):
+    def get_tag(self, tag_name, retry=None):
+        if not retry:
+            return self._get_tag(tag_name)
+        while retry > 0:
+            result = self._get_tag(tag_name)
+            if result:
+                return result
+            retry -= 1
+            time.sleep(2)
+        return None
+
+    def _get_tag(self, tag_name):
         if not self.instance.tags:
             return None
         for tag in self.instance.tags:
