@@ -189,6 +189,7 @@ def setup_foreman_backend(log: logging.Logger) -> List[CrudForeman]:
                 name=name,
                 url=config.url,
                 ssl_key=config.sslkey,
+                ssl_ca=config.sslca,
                 ssl_crt=config.sslcrt,
                 dns_arpa_enable=config.dnsarpaenable,
                 dns_arpa_zones=config.dnsarpazones,

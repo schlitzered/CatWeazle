@@ -56,6 +56,7 @@ class ConfigOAuth(BaseModel):
 
 class ConfigForeman(BaseModel):
     url: StrictStr
+    sslca: typing.Optional[StrictStr] = None
     sslcrt: typing.Optional[StrictStr] = None
     sslkey: typing.Optional[StrictStr] = None
     dnsforwardenable: bool = False

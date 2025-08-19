@@ -17,6 +17,7 @@ class CrudForeman:
         name: str,
         url: str,
         ssl_key: str,
+        ssl_ca: str,
         ssl_crt: str,
         dns_arpa_enable: bool,
         dns_arpa_zones: List[IPv4Network],
@@ -33,12 +34,14 @@ class CrudForeman:
         self._name = name
         self._realm_enable = realm_enable
         self._realm_name = realm_name
+        self._ssl_ca = ssl_ca
         self._ssl_crt = ssl_crt
         self._ssl_key = ssl_key
         self._url = url
         context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
         try:
             context.load_cert_chain(certfile=self.ssl_crt, keyfile=self.ssl_key)
+            context.load_verify_locations(cafile=self.ssl_ca)
         except OSError as err:
             self.log.error(f"{self.name}:foreman: could not create ssl context: {err}")
             sys.exit(1)
@@ -71,6 +74,10 @@ class CrudForeman:
     @property
     def realm_name(self):
         return self._realm_name
+
+    @property
+    def ssl_ca(self):
+        return self._ssl_ca
 
     @property
     def ssl_crt(self):

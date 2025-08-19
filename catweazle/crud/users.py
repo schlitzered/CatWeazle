@@ -132,13 +132,6 @@ class CrudUsers(CrudMongo):
         await self._delete(query=query)
         return ModelV2DataDelete()
 
-    async def delete_mark(
-        self,
-        _id: str,
-    ) -> None:
-        query = {"id": _id}
-        await self._delete_mark(query=query)
-
     async def get(
         self,
         _id: str,

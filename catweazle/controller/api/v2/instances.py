@@ -141,7 +141,6 @@ class ControllerApiV2Instances:
         instance = await self.crud_instances.get(
             _id=instance_id, fields=["fqdn", "ip_address"]
         )
-        await self.crud_instances.delete_mark(_id=instance_id)
         for foreman in self.crud_foreman_backends:
             try:
                 await foreman.delete_dns(

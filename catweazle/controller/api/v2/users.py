@@ -116,7 +116,6 @@ class ControllerApiV2Users:
 
     async def delete(self, request: Request, user_id: str):
         await self.authorize.require_admin(request=request)
-        await self.crud_users.delete_mark(_id=user_id)
         await self.curd_users_credentials.delete_all_from_owner(owner=user_id)
         await self.crud_permissions.delete_user_from_permissions(user_id=user_id)
         return await self.crud_users.delete(_id=user_id)

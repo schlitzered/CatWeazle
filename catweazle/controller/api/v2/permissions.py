@@ -119,9 +119,6 @@ class ControllerApiV2Permissions:
         permission_id: str,
     ):
         await self.authorize.require_admin(request=request)
-        await self.crud_permissions.delete_mark(
-            _id=permission_id,
-        )
         return await self.crud_permissions.delete(
             _id=permission_id,
         )

@@ -58,13 +58,6 @@ class CrudPermissions(CrudMongo):
         await self._delete(query=query)
         return ModelV2DataDelete()
 
-    async def delete_mark(
-        self,
-        _id: str,
-    ) -> None:
-        query = {"id": _id}
-        await self._delete_mark(query=query)
-
     async def delete_user_from_permissions(self, user_id):
         query = {}
         update = {"$pull": {"users": user_id}}
