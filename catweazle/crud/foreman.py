@@ -96,14 +96,14 @@ class CrudForeman:
         return self._http
 
     async def request_delete(self, url):
-        url = f"{self.url}/{url}"
+        url = f"{self.url}{url}"
         resp = await self.http.delete(url)
         if resp.status_code != 200:
             self.log.error(resp.text)
             raise BackendError()
 
     async def request_post(self, url, data):
-        url = f"{self.url}/{url}"
+        url = f"{self.url}{url}"
         resp = await self.http.post(url, data=data)
         if resp.status_code != 200:
             self.log.error(resp.text)
