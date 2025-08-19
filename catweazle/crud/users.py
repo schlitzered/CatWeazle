@@ -50,7 +50,7 @@ class CrudUsers(CrudMongo):
         password = credentials.password
         try:
             result = await self._coll.find_one(
-                filter={"id": user, "deleting": False},
+                filter={"id": user},
                 projection={"password": 1, "backend": 1},
             )
             if not result:
