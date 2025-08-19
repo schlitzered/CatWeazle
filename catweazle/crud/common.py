@@ -47,7 +47,6 @@ class CrudMongo(
         payload: dict,
         fields: list = None,
     ) -> dict:
-        payload["deleting"] = False
         try:
             _id = await self._coll.insert_one(payload)
             return await self._get_by_obj_id(_id=_id.inserted_id, fields=fields)
@@ -67,23 +66,10 @@ class CrudMongo(
             raise ResourceNotFound
         return {}
 
-    async def _delete_mark(self, query: dict) -> None:
-        update = {"$set": {"deleting": True}}
-        try:
-            await self._coll.update_one(
-                filter=query,
-                update=update,
-            )
-        except pymongo.errors.ConnectionFailure as err:
-            self.log.error(f"backend error: {err}")
-            raise BackendError
 
     async def _get(
-        self, query: dict, fields: list, allow_deleted: bool = False
+        self, query: dict, fields: list
     ) -> dict:
-        query["deleting"] = False
-        if allow_deleted:
-            query.pop("deleting", None)
         try:
             result = await self._coll.find_one(
                 filter=query, projection=self._projection(fields)
@@ -100,7 +86,7 @@ class CrudMongo(
         return self._format(result)
 
     async def _get_by_obj_id(self, _id, fields: list) -> dict:
-        query = {"_id": _id, "deleting": False}
+        query = {"_id": _id}
         return await self._get(query=query, fields=fields)
 
     async def _resource_exists(self, query: dict) -> ObjectId:
@@ -116,7 +102,6 @@ class CrudMongo(
         page: typing.Optional[int] = None,
         limit: typing.Optional[int] = None,
     ) -> dict:
-        query["deleting"] = False
         try:
             count = await self._coll.count_documents(
                 filter=query,
@@ -135,7 +120,6 @@ class CrudMongo(
     async def _update(
         self, query: dict, payload: dict, fields: list, upsert=False
     ) -> dict:
-        query["deleting"] = False
         update = {"$set": {}}
         for k, v in payload.items():
             if v is None:

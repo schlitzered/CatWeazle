@@ -47,7 +47,6 @@ class CrudInstances(CrudMongo):
         self.log.info(f"creating {self.resource_type} indices")
         await self.coll.create_index([("id", pymongo.ASCENDING)], unique=True)
         await self.coll.create_index([("fqdn", pymongo.ASCENDING)], unique=True)
-        await self.coll.create_index([("deleting", pymongo.ASCENDING)])
         self.log.info(f"creating {self.resource_type} indices, done")
 
     async def create(
@@ -84,11 +83,10 @@ class CrudInstances(CrudMongo):
         self,
         _id: str,
         fields: list,
-        allow_deleted: bool = False,
     ) -> ModelV2InstanceGet:
         query = {"id": _id}
         result = await self._get(
-            query=query, fields=fields, allow_deleted=allow_deleted
+            query=query, fields=fields
         )
         return ModelV2InstanceGet(**result)
 

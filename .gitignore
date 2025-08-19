@@ -1,8 +1,7 @@
 .idea
 .env
 AWSLambda/v-env
-AWSLambda/function.zip
-AWSLambda/package.sh
+AWSLambda/*.zip
 contrib/*ini
 dist/
 init.sh
