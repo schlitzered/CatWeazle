@@ -38,14 +38,17 @@ class CrudForeman:
         self._ssl_crt = ssl_crt
         self._ssl_key = ssl_key
         self._url = url
-        context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-        try:
-            context.load_cert_chain(certfile=self.ssl_crt, keyfile=self.ssl_key)
-            context.load_verify_locations(cafile=self.ssl_ca)
-        except OSError as err:
-            self.log.error(f"{self.name}:foreman: could not create ssl context: {err}")
-            sys.exit(1)
-        self._http = httpx.AsyncClient(verify=context)
+        if self.ssl_key and self.ssl_crt and self.ssl_ca:
+            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+            try:
+                context.load_cert_chain(certfile=self.ssl_crt, keyfile=self.ssl_key)
+                context.load_verify_locations(cafile=self.ssl_ca)
+            except OSError as err:
+                self.log.error(f"{self.name}:foreman: could not create ssl context: {err}")
+                sys.exit(1)
+            self._http = httpx.AsyncClient(verify=context, timeout=30)
+        else:
+            self._http = httpx.AsyncClient(timeout=30)
 
     @property
     def log(self):
@@ -98,6 +101,7 @@ class CrudForeman:
     async def request_delete(self, url):
         url = f"{self.url}{url}"
         resp = await self.http.delete(url)
+        self.log.info(f"{self.name}:foreman: request_delete: {url}")
         if resp.status_code != 200:
             self.log.error(resp.text)
             raise BackendError()
@@ -105,6 +109,7 @@ class CrudForeman:
     async def request_post(self, url, data):
         url = f"{self.url}{url}"
         resp = await self.http.post(url, data=data)
+        self.log.info(f"{self.name}:foreman: request_post: {url} {data}")
         if resp.status_code != 200:
             self.log.error(resp.text)
             raise BackendError()
@@ -155,7 +160,7 @@ class CrudForeman:
             f"{self.name}:foreman: creating DNS A Record for {fqdn} with ip {ip_address}, done"
         )
 
-        await self.request_post("/dns", body_a)
+        await self.request_post("/dns/", body_a)
 
     async def delete_dns(self, fqdn, ip_address):
         await self.delete_arpa_dns(fqdn=fqdn, ip_address=ip_address)

@@ -17,8 +17,8 @@ class ConfigApp(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8000
     secretkey: str = "secret"
-    indicator_regex: str = "^.*NUM.*$"
-    domain_suffix: str = ".example.com"
+    indicatorregex: str = "^.*NUM.*$"
+    domainsuffix: str = ".example.com"
     dry_run: bool = False
 
 

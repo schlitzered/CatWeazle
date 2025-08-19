@@ -55,10 +55,10 @@ class ModelV2instancePost(BaseModel):
     @staticmethod
     @field_validator("dns_indicator", mode="before")
     def validate_dns_indicator(value):
-        regex = re.compile(config.app.indicator_regex)
+        regex = re.compile(config.app.indicatorregex)
         if not regex.match(value):
             raise ValueError(
-                f"dns_indicator does not match regex: {config.app.indicator_regex}"
+                f"dns_indicator does not match regex: {config.app.indicatorregex}"
             )
         return value
 

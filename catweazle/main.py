@@ -80,7 +80,7 @@ async def lifespan(app: FastAPI):
     crud_instances = CrudInstances(
         log=log,
         coll=mongo_db["instances"],
-        domain_suffix=settings.app.domain_suffix,
+        domain_suffix=settings.app.domainsuffix,
     )
     await crud_instances.index_create()
 
