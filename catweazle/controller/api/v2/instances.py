@@ -226,4 +226,3 @@ class ControllerApiV2Instances:
         return await self.crud_instances.update(
             _id=instance_id, payload=data, fields=list(fields)
         )
-

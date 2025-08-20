@@ -78,9 +78,7 @@ class CrudInstances(CrudMongo):
         fields: list,
     ) -> ModelV2InstanceGet:
         query = {"id": _id}
-        result = await self._get(
-            query=query, fields=fields
-        )
+        result = await self._get(query=query, fields=fields)
         return ModelV2InstanceGet(**result)
 
     async def resource_exists(
@@ -129,7 +127,6 @@ class CrudInstances(CrudMongo):
         data = payload.model_dump()
         result = await self._update(query=query, fields=fields, payload=data)
         return ModelV2InstanceGet(**result)
-
 
     async def update_ipa_otp(
         self,

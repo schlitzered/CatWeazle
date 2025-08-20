@@ -69,7 +69,6 @@ class ControllerApi:
             tags=["api_version"],
         )
 
-
     @property
     def router(self):
         return self._router

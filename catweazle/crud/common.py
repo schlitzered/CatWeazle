@@ -66,10 +66,7 @@ class CrudMongo(
             raise ResourceNotFound
         return {}
 
-
-    async def _get(
-        self, query: dict, fields: list
-    ) -> dict:
+    async def _get(self, query: dict, fields: list) -> dict:
         try:
             result = await self._coll.find_one(
                 filter=query, projection=self._projection(fields)

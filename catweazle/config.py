@@ -19,7 +19,8 @@ class ConfigApp(BaseModel):
     secretkey: str = "secret"
     indicatorregex: str = "^.*NUM.*$"
     domainsuffix: str = ".example.com"
-    dry_run: bool = False
+    proxyheaders: typing.Optional[bool] = False
+    forwardedallowips: typing.Optional[str] = "127.0.0.0/8"
 
 
 class ConfigLdap(BaseModel):

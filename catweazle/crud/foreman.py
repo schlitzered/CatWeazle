@@ -44,7 +44,9 @@ class CrudForeman:
                 context.load_cert_chain(certfile=self.ssl_crt, keyfile=self.ssl_key)
                 context.load_verify_locations(cafile=self.ssl_ca)
             except OSError as err:
-                self.log.error(f"{self.name}:foreman: could not create ssl context: {err}")
+                self.log.error(
+                    f"{self.name}:foreman: could not create ssl context: {err}"
+                )
                 sys.exit(1)
             self._http = httpx.AsyncClient(verify=context, timeout=30)
         else:

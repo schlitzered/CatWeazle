@@ -62,5 +62,6 @@ class ModelV2instancePost(BaseModel):
             )
         return value
 
+
 class ModelV2instancePut(BaseModel):
     meta: Optional[Dict[str, str]] = None

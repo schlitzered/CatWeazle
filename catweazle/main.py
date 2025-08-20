@@ -259,7 +259,13 @@ async def add_process_time_header(request, call_next):
 
 
 def main():
-    uvicorn.run(app, host=settings.app.host, port=settings.app.port)
+    uvicorn.run(
+        app,
+        host=settings.app.host,
+        port=settings.app.port,
+        proxy_headers=settings.app.proxyheaders,
+        forwarded_allow_ips=settings.app.forwardedallowips,
+    )
 
 
 if __name__ == "__main__":
