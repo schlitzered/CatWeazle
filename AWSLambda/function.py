@@ -8,7 +8,7 @@ import boto3
 import botocore.exceptions
 import httpx
 
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 
 def lambda_handler(event, context):
@@ -87,6 +87,10 @@ class CatWeazleLambda(object):
     @property
     def account_id(self):
         return self.event["account"]
+
+    @property
+    def region(self):
+        return self.event["region"]
 
     @property
     def instance(self):
@@ -182,6 +186,7 @@ class CatWeazleLambda(object):
         body["meta"] = dict()
         body["meta"]["account_id"] = self.account_id
         body["meta"]["instance_id"] = self.ec2_id
+        body["meta"]["region"] = self.region
         body["meta"]["instance_state"] = self.event["detail"]["state"]
 
     def instance_create(self):
