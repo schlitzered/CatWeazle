@@ -1,5 +1,10 @@
 import pymongo
 
+from catweazle.errors import QueryParamValidationError
+
+from catweazle.model.v2.common import filter_complex_search
+from catweazle.model.v2.common import filter_complex_search_pattern
+
 
 class FilterMixIn(object):
     @staticmethod
@@ -40,6 +45,53 @@ class FilterMixIn(object):
             query[field] = selector
         elif list_filter:
             query[field] = {"$in": list_filter}
+
+    @staticmethod
+    def _filter_complex_search(
+        query: dict,
+        base_attribute: str,
+        complex_search: filter_complex_search,
+    ):
+        def str_to_bool(s: str):
+            _true = ["1", "true", "True"]
+            return s in _true
+
+        if not complex_search:
+            return
+
+        for item in complex_search:
+            res = filter_complex_search_pattern.match(item)
+            _attr = res.group(1)
+            _op = res.group(2)
+            _type = res.group(3)
+            _value = res.group(4)
+            query[f"{base_attribute}.{_attr}"] = {}
+            try:
+                if _op in ["in", "nin"]:
+                    _value = _value.split(",")
+                    if _type == "bool":
+                        _value = [str_to_bool(item) for item in _value]
+                    elif _type == "float":
+                        _value = [float(item) for item in _value]
+                    elif _type == "int":
+                        _value = [int(item) for item in _value]
+                elif _op == "regex":
+                    if _type != "str":
+                        raise QueryParamValidationError(
+                            msg=f"regex search only supports type str, got {_type}"
+                        )
+                else:
+                    if _type == "bool":
+                        _value = str_to_bool(_value)
+                    elif _type == "float":
+                        _value = float(_value)
+                    elif _type == "int":
+                        _value = int(_value)
+            except ValueError:
+                raise QueryParamValidationError(
+                    msg=f"could not transform attribute {_attr} with value {_value} into type {_type}"
+                )
+            query[f"{base_attribute}.{_attr}"][f"${_op}"] = _value
 
 
 class Format:

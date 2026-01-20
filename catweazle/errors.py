@@ -84,3 +84,8 @@ class HostNumRangeExceeded(HTTPException):
             detail=f"Host number range exceeded for indicator {max_range}, "
             "please use a different indicator or remove existing hosts",
         )
+
+
+class QueryParamValidationError(HTTPException):
+    def __init__(self, msg):
+        super(QueryParamValidationError, self).__init__(status_code=422, detail=msg)

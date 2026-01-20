@@ -11,6 +11,7 @@ from catweazle.crud.common import CrudMongo
 from catweazle.errors import HostNumRangeExceeded
 
 from catweazle.model.v2.common import ModelV2DataDelete
+from catweazle.model.v2.common import filter_complex_search
 from catweazle.model.v2.common import sort_order_literal
 from catweazle.model.v2.instances import ModelV2InstanceGet
 from catweazle.model.v2.instances import ModelV2InstanceGetMulti
@@ -94,6 +95,7 @@ class CrudInstances(CrudMongo):
         dns_indicator: typing.Optional[str] = None,
         ip_address: typing.Optional[str] = None,
         fqdn: typing.Optional[str] = None,
+        meta: typing.Optional[filter_complex_search] = None,
         fields: typing.Optional[list] = None,
         sort: typing.Optional[str] = None,
         sort_order: typing.Optional[sort_order_literal] = None,
@@ -107,6 +109,8 @@ class CrudInstances(CrudMongo):
         self._filter_re(query, "dns_indicator", dns_indicator)
         self._filter_re(query, "ip_address", ip_address)
         self._filter_re(query, "fqdn", fqdn)
+        self._filter_complex_search(query, base_attribute="meta", complex_search=meta)
+        self.log.info(f"searching {self.resource_type} with query: {query}")
         result = await self._search(
             query=query,
             fields=fields,

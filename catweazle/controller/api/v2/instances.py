@@ -15,6 +15,7 @@ from catweazle.crud.foreman import CrudForeman
 from catweazle.errors import BackendError
 
 from catweazle.model.v2.common import ModelV2DataDelete
+from catweazle.model.v2.common import filter_complex_search
 from catweazle.model.v2.common import sort_order_literal
 from catweazle.model.v2.instances import filter_list
 from catweazle.model.v2.instances import filter_literal
@@ -188,6 +189,10 @@ class ControllerApiV2Instances:
             description="filter: regular_expressions", default=None
         ),
         fqdn: str = Query(description="filter: regular_expressions", default=None),
+        meta: filter_complex_search = Query(
+            default=None,
+            description="filter: must match this form 'key:operator:type:value', e.g. match this regular expression (.*):(eq|gt|gte|in|lt|lte|ne|nin|regex):(str|int|float|bool):(.*)",
+        ),
         fields: Set[filter_literal] = Query(default=filter_list),
         sort: sort_literal = Query(default="id"),
         sort_order: sort_order_literal = Query(default="ascending"),
@@ -206,6 +211,7 @@ class ControllerApiV2Instances:
             dns_indicator=dns_indicator,
             ip_address=ip_address,
             fqdn=fqdn,
+            meta=meta,
             fields=list(fields),
             sort=sort,
             sort_order=sort_order,
