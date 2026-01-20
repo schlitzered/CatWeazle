@@ -14,6 +14,12 @@ sort_order_literal = Literal[
 ]
 
 
+filter_complex_search_pattern = re.compile(
+    "(.*):(eq|gt|gte|in|lt|lte|ne|nin|regex):(str|int|float|bool):(.*)"
+)
+filter_complex_search = Set[constr(pattern=filter_complex_search_pattern.pattern)]
+
+
 class ModelV2MetaMulti(BaseModel):
     result_size: Annotated[int, Field(gt=-1)]
 
