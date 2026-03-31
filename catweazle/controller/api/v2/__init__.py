@@ -34,6 +34,7 @@ class ControllerApiV2:
         crud_users: CrudUsers,
         crud_users_credentials: CrudCredentials,
         http: httpx.AsyncClient,
+        bypass_ip_check: bool = False,
     ):
         self._router = APIRouter()
         self._log = log
@@ -54,6 +55,7 @@ class ControllerApiV2:
                 authorize=authorize,
                 crud_instances=crud_instances,
                 crud_foreman_backends=crud_foreman_backends,
+                bypass_ip_check=bypass_ip_check,
             ).router,
             responses={404: {"description": "Not found"}},
         )

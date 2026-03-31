@@ -34,8 +34,10 @@ class ControllerApiV2Instances:
         authorize: Authorize,
         crud_instances: CrudInstances,
         crud_foreman_backends: List[CrudForeman],
+        bypass_ip_check: bool = False,
     ):
         self._authorize = authorize
+        self._bypass_ip_check = bypass_ip_check
         self._crud_instances = crud_instances
         self._crud_foreman_backends = crud_foreman_backends
         self._log = log
@@ -84,6 +86,10 @@ class ControllerApiV2Instances:
     @property
     def authorize(self):
         return self._authorize
+
+    @property
+    def bypass_ip_check(self):
+        return self._bypass_ip_check
 
     @property
     def crud_instances(self):
@@ -168,11 +174,12 @@ class ControllerApiV2Instances:
             await self.authorize.require_user(request=request)
             fields.discard("ipa_otp")
         except SessionCredentialError as err:
-            result = await self.crud_instances.get(
-                _id=instance_id, fields=["id", "ip_address"]
-            )
-            if result.ip_address != request.client.host:
-                raise err
+            if not self.bypass_ip_check:
+                result = await self.crud_instances.get(
+                    _id=instance_id, fields=["id", "ip_address"]
+                )
+                if result.ip_address != request.client.host:
+                    raise err
 
         return await self.crud_instances.get(_id=instance_id, fields=list(fields))
 
