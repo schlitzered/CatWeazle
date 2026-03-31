@@ -121,6 +121,7 @@ async def lifespan(app: FastAPI):
         crud_users_credentials=crud_users_credentials,
         crud_oauth=crud_oauth,
         http=http,
+        bypass_ip_check=settings.app.bypassIpCheck,
     )
     app.include_router(controller.router)
 

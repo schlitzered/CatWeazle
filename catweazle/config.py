@@ -21,6 +21,7 @@ class ConfigApp(BaseModel):
     domainsuffix: str = ".example.com"
     proxyheaders: typing.Optional[bool] = False
     forwardedallowips: typing.Optional[str] = "127.0.0.0/8"
+    bypassIpCheck: bool = False
 
 
 class ConfigLdap(BaseModel):
