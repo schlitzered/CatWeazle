@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "catweazle"
 version = "1.2.0"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 authors = [
   {name = "Stephan.Schultchen", email = "stephan.schultchen@gmail.com"},
 ]
