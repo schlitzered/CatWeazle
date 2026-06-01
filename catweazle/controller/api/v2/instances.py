@@ -139,26 +139,24 @@ class ControllerApiV2Instances:
             request=request, permission="INSTANCE:POST"
         )
 
-        # Pre-calculate data for webhooks
-        webhook_data = data.model_dump()
-        webhook_data["id"] = instance_id
-        fqdn = f"{data.dns_indicator}{self.crud_instances.domain_suffix}"
-        if "NUM" in data.dns_indicator:
-            number = await self.crud_instances.get_next_num(data.dns_indicator)
-            fqdn = f"{data.dns_indicator.replace('NUM', number)}{self.crud_instances.domain_suffix}"
-        webhook_data["fqdn"] = fqdn
-        webhook_data["ip_address"] = str(data.ip_address)
-
-        await self.crud_webhooks.execute(
-            trigger="pre-create",
-            instance_data=webhook_data,
-            crud_secrets=self.crud_secrets,
-            http_client=self.http_client,
-        )
-
         instance = await self.crud_instances.create(
             _id=instance_id, payload=data, fields=list(fields)
         )
+
+        try:
+            await self.crud_webhooks.execute(
+                trigger="pre-create",
+                instance_data=instance.model_dump(),
+                crud_secrets=self.crud_secrets,
+                http_client=self.http_client,
+            )
+        except (httpx.HTTPError, BackendError) as err:
+            await self.delete(
+                instance_id=instance_id,
+                request=request,
+            )
+            raise err
+
         for foreman in self.crud_foreman_backends:
             try:
                 await foreman.create_dns(

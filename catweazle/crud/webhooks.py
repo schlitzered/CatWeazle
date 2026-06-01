@@ -15,6 +15,8 @@ import pymongo
 
 from catweazle.crud.common import CrudMongo
 from catweazle.crud.secrets import CrudSecrets
+from catweazle.errors import BackendError
+from catweazle.errors import ResourceNotFound
 from catweazle.model.v2.common import ModelV2DataDelete
 from catweazle.model.v2.common import sort_order_literal
 from catweazle.model.v2.webhooks import ModelV2WebhookGet
@@ -122,7 +124,7 @@ class CrudWebhooks(CrudMongo):
                     crud_secrets=crud_secrets,
                     http_client=http_client,
                 )
-            except Exception as e:
+            except (httpx.HTTPError, BackendError) as e:
                 self.log.error(f"Failed to execute webhook {webhook.id}: {e}")
                 if webhook.fail_on_error and trigger.startswith("pre-"):
                     raise e
@@ -161,7 +163,7 @@ class CrudWebhooks(CrudMongo):
                         secrets_context[secret_id] = await crud_secrets.get_secret(
                             secret_id
                         )
-                    except Exception:
+                    except (ResourceNotFound, BackendError):
                         secrets_context[secret_id] = "SECRET_NOT_FOUND"
                 text = text.replace(match.group(0), secrets_context[secret_id])
 
@@ -252,7 +254,7 @@ class CrudWebhooks(CrudMongo):
                 )
                 client_to_close = request_client
 
-            except Exception as e:
+            except (OSError, httpx.HTTPError) as e:
                 if temp_dir:
                     shutil.rmtree(temp_dir)
                 raise e

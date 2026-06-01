@@ -23,6 +23,7 @@ class ConfigApp(BaseModel):
     proxyheaders: typing.Optional[bool] = False
     forwardedallowips: typing.Optional[str] = "127.0.0.0/8"
     bypassIpCheck: bool = False
+    instancecreateretries: int = 10
 
 
 class ConfigLdap(BaseModel):
