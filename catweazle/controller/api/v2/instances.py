@@ -1,6 +1,7 @@
 import logging
 from typing import List
 from typing import Set
+import httpx
 
 from fastapi import APIRouter
 from fastapi import Query
@@ -12,6 +13,8 @@ from catweazle.errors import SessionCredentialError
 
 from catweazle.crud.instances import CrudInstances
 from catweazle.crud.foreman import CrudForeman
+from catweazle.crud.secrets import CrudSecrets
+from catweazle.crud.webhooks import CrudWebhooks
 from catweazle.errors import BackendError
 
 from catweazle.model.v2.common import ModelV2DataDelete
@@ -34,12 +37,18 @@ class ControllerApiV2Instances:
         authorize: Authorize,
         crud_instances: CrudInstances,
         crud_foreman_backends: List[CrudForeman],
+        crud_secrets: CrudSecrets,
+        crud_webhooks: CrudWebhooks,
+        http_client: httpx.AsyncClient,
         bypass_ip_check: bool = False,
     ):
         self._authorize = authorize
         self._bypass_ip_check = bypass_ip_check
         self._crud_instances = crud_instances
         self._crud_foreman_backends = crud_foreman_backends
+        self._crud_secrets = crud_secrets
+        self._crud_webhooks = crud_webhooks
+        self._http_client = http_client
         self._log = log
         self._router = APIRouter(
             prefix="/instances",
@@ -100,6 +109,18 @@ class ControllerApiV2Instances:
         return self._crud_foreman_backends
 
     @property
+    def crud_secrets(self):
+        return self._crud_secrets
+
+    @property
+    def crud_webhooks(self):
+        return self._crud_webhooks
+
+    @property
+    def http_client(self):
+        return self._http_client
+
+    @property
     def log(self):
         return self._log
 
@@ -116,6 +137,23 @@ class ControllerApiV2Instances:
     ):
         await self.authorize.require_permission(
             request=request, permission="INSTANCE:POST"
+        )
+
+        # Pre-calculate data for webhooks
+        webhook_data = data.model_dump()
+        webhook_data["id"] = instance_id
+        fqdn = f"{data.dns_indicator}{self.crud_instances.domain_suffix}"
+        if "NUM" in data.dns_indicator:
+            number = await self.crud_instances.get_next_num(data.dns_indicator)
+            fqdn = f"{data.dns_indicator.replace('NUM', number)}{self.crud_instances.domain_suffix}"
+        webhook_data["fqdn"] = fqdn
+        webhook_data["ip_address"] = str(data.ip_address)
+
+        await self.crud_webhooks.execute(
+            trigger="pre-create",
+            instance_data=webhook_data,
+            crud_secrets=self.crud_secrets,
+            http_client=self.http_client,
         )
 
         instance = await self.crud_instances.create(
@@ -139,6 +177,14 @@ class ControllerApiV2Instances:
                     request=request,
                 )
                 raise err
+
+        await self.crud_webhooks.execute(
+            trigger="post-create",
+            instance_data=instance.model_dump(),
+            crud_secrets=self.crud_secrets,
+            http_client=self.http_client,
+        )
+
         return instance
 
     async def delete(self, request: Request, instance_id: str):
@@ -146,8 +192,17 @@ class ControllerApiV2Instances:
             request=request, permission="INSTANCE:DELETE"
         )
         instance = await self.crud_instances.get(
-            _id=instance_id, fields=["fqdn", "ip_address"]
+            _id=instance_id, fields=list(filter_list)
         )
+        instance_data = instance.model_dump()
+
+        await self.crud_webhooks.execute(
+            trigger="pre-delete",
+            instance_data=instance_data,
+            crud_secrets=self.crud_secrets,
+            http_client=self.http_client,
+        )
+
         for foreman in self.crud_foreman_backends:
             try:
                 await foreman.delete_dns(
@@ -162,7 +217,16 @@ class ControllerApiV2Instances:
                 )
             except BackendError:
                 pass
-        return await self.crud_instances.delete(_id=instance_id)
+        result = await self.crud_instances.delete(_id=instance_id)
+
+        await self.crud_webhooks.execute(
+            trigger="post-delete",
+            instance_data=instance_data,
+            crud_secrets=self.crud_secrets,
+            http_client=self.http_client,
+        )
+
+        return result
 
     async def get(
         self,

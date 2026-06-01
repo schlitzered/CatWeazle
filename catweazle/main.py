@@ -30,7 +30,9 @@ from catweazle.crud.foreman import CrudForeman
 from catweazle.crud.instances import CrudInstances
 from catweazle.crud.oauth import CrudOAuthGitHub
 from catweazle.crud.permissions import CrudPermissions
+from catweazle.crud.secrets import CrudSecrets
 from catweazle.crud.users import CrudUsers
+from catweazle.crud.webhooks import CrudWebhooks
 
 from catweazle.model.v2.users import ModelV2UserPost
 
@@ -77,6 +79,20 @@ async def lifespan(app: FastAPI):
         ldap_user_pattern=settings.ldap.userpattern,
     )
 
+    crud_secrets = CrudSecrets(
+        log=log,
+        coll=mongo_db["secrets"],
+        encryption_key=settings.app.encryptionkey,
+    )
+    await crud_secrets.index_create()
+
+    crud_webhooks = CrudWebhooks(
+        log=log,
+        coll=mongo_db["webhooks"],
+        encryption_key=settings.app.encryptionkey,
+    )
+    await crud_webhooks.index_create()
+
     crud_instances = CrudInstances(
         log=log,
         coll=mongo_db["instances"],
@@ -117,8 +133,10 @@ async def lifespan(app: FastAPI):
         crud_foreman_backends=crud_foreman_backends,
         crud_instances=crud_instances,
         crud_permissions=crud_permissions,
+        crud_secrets=crud_secrets,
         crud_users=crud_users,
         crud_users_credentials=crud_users_credentials,
+        crud_webhooks=crud_webhooks,
         crud_oauth=crud_oauth,
         http=http,
         bypass_ip_check=settings.app.bypassIpCheck,

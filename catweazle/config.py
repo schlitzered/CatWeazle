@@ -17,6 +17,7 @@ class ConfigApp(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8000
     secretkey: str = "secret"
+    encryptionkey: str
     indicatorregex: str = "^.*NUM.*$"
     domainsuffix: str = ".example.com"
     proxyheaders: typing.Optional[bool] = False

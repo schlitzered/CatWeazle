@@ -30,7 +30,7 @@ class CrudInstances(CrudMongo):
     def domain_suffix(self):
         return self._domain_suffix
 
-    async def _next_num(self, indicator):
+    async def get_next_num(self, indicator):
         instances = await self.search(dns_indicator=indicator)
         taken = list()
         for instance in instances.result:
@@ -58,7 +58,7 @@ class CrudInstances(CrudMongo):
 
         fqdn = f"{payload.dns_indicator}{self.domain_suffix}"
         if "NUM" in payload.dns_indicator:
-            number = await self._next_num(payload.dns_indicator)
+            number = await self.get_next_num(payload.dns_indicator)
             fqdn = f"{payload.dns_indicator.replace('NUM', number)}{self.domain_suffix}"
         data["fqdn"] = fqdn
         data["ip_address"] = str(payload.ip_address)

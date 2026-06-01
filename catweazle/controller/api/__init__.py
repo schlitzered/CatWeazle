@@ -13,7 +13,9 @@ from catweazle.crud.ldap import CrudLdap
 from catweazle.crud.foreman import CrudForeman
 from catweazle.crud.instances import CrudInstances
 from catweazle.crud.permissions import CrudPermissions
+from catweazle.crud.secrets import CrudSecrets
 from catweazle.crud.users import CrudUsers
+from catweazle.crud.webhooks import CrudWebhooks
 
 from catweazle.model import ModelApiVersions
 
@@ -27,8 +29,10 @@ class ControllerApi:
         crud_foreman_backends: List[CrudForeman],
         crud_instances: CrudInstances,
         crud_permissions: CrudPermissions,
+        crud_secrets: CrudSecrets,
         crud_users: CrudUsers,
         crud_users_credentials: CrudCredentials,
+        crud_webhooks: CrudWebhooks,
         http: httpx.AsyncClient,
         bypass_ip_check: bool = False,
     ):
@@ -43,8 +47,10 @@ class ControllerApi:
                 crud_foreman_backends=crud_foreman_backends,
                 crud_instances=crud_instances,
                 crud_permissions=crud_permissions,
+                crud_secrets=crud_secrets,
                 crud_users=crud_users,
                 crud_users_credentials=crud_users_credentials,
+                crud_webhooks=crud_webhooks,
                 http=http,
                 bypass_ip_check=bypass_ip_check,
             ).router,
