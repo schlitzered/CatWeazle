@@ -66,6 +66,7 @@ class ControllerApiV2:
                 crud_foreman_backends=crud_foreman_backends,
                 crud_secrets=crud_secrets,
                 crud_webhooks=crud_webhooks,
+                crud_webhook_logs=crud_webhook_logs,
                 http_client=http,
                 bypass_ip_check=bypass_ip_check,
             ).router,

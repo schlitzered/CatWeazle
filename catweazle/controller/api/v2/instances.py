@@ -15,6 +15,8 @@ from catweazle.crud.instances import CrudInstances
 from catweazle.crud.foreman import CrudForeman
 from catweazle.crud.secrets import CrudSecrets
 from catweazle.crud.webhooks import CrudWebhooks
+from catweazle.crud.webhook_logs import CrudWebhookLogs
+from catweazle.controller.webhook_executor import WebhookExecutor
 from catweazle.errors import BackendError
 
 from catweazle.model.v2.common import ModelV2DataDelete
@@ -39,6 +41,7 @@ class ControllerApiV2Instances:
         crud_foreman_backends: List[CrudForeman],
         crud_secrets: CrudSecrets,
         crud_webhooks: CrudWebhooks,
+        crud_webhook_logs: CrudWebhookLogs,
         http_client: httpx.AsyncClient,
         bypass_ip_check: bool = False,
     ):
@@ -48,8 +51,16 @@ class ControllerApiV2Instances:
         self._crud_foreman_backends = crud_foreman_backends
         self._crud_secrets = crud_secrets
         self._crud_webhooks = crud_webhooks
+        self._crud_webhook_logs = crud_webhook_logs
         self._http_client = http_client
         self._log = log
+        self._webhook_executor = WebhookExecutor(
+            log=log,
+            crud_webhooks=crud_webhooks,
+            crud_secrets=crud_secrets,
+            crud_webhook_logs=crud_webhook_logs,
+            http_client=http_client,
+        )
         self._router = APIRouter(
             prefix="/instances",
             tags=["instances"],
@@ -117,6 +128,10 @@ class ControllerApiV2Instances:
         return self._crud_webhooks
 
     @property
+    def crud_webhook_logs(self):
+        return self._crud_webhook_logs
+
+    @property
     def http_client(self):
         return self._http_client
 
@@ -144,11 +159,9 @@ class ControllerApiV2Instances:
         )
 
         try:
-            await self.crud_webhooks.execute(
+            await self._webhook_executor.execute(
                 trigger="pre-create",
                 instance_data=instance.model_dump(),
-                crud_secrets=self.crud_secrets,
-                http_client=self.http_client,
             )
         except (httpx.HTTPError, BackendError) as err:
             await self.delete(
@@ -176,11 +189,9 @@ class ControllerApiV2Instances:
                 )
                 raise err
 
-        await self.crud_webhooks.execute(
+        await self._webhook_executor.execute(
             trigger="post-create",
             instance_data=instance.model_dump(),
-            crud_secrets=self.crud_secrets,
-            http_client=self.http_client,
         )
 
         return instance
@@ -194,11 +205,9 @@ class ControllerApiV2Instances:
         )
         instance_data = instance.model_dump()
 
-        await self.crud_webhooks.execute(
+        await self._webhook_executor.execute(
             trigger="pre-delete",
             instance_data=instance_data,
-            crud_secrets=self.crud_secrets,
-            http_client=self.http_client,
         )
 
         for foreman in self.crud_foreman_backends:
@@ -217,11 +226,9 @@ class ControllerApiV2Instances:
                 pass
         result = await self.crud_instances.delete(_id=instance_id)
 
-        await self.crud_webhooks.execute(
+        await self._webhook_executor.execute(
             trigger="post-delete",
             instance_data=instance_data,
-            crud_secrets=self.crud_secrets,
-            http_client=self.http_client,
         )
 
         return result

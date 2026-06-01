@@ -98,7 +98,6 @@ async def lifespan(app: FastAPI):
         log=log,
         coll=mongo_db["webhooks"],
         encryption_key=settings.app.encryptionkey,
-        crud_webhook_logs=crud_webhook_logs,
     )
     await crud_webhooks.index_create()
 
