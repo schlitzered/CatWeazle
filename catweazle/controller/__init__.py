@@ -17,6 +17,7 @@ from catweazle.crud.oauth import CrudOAuth
 from catweazle.crud.permissions import CrudPermissions
 from catweazle.crud.secrets import CrudSecrets
 from catweazle.crud.users import CrudUsers
+from catweazle.crud.webhook_logs import CrudWebhookLogs
 from catweazle.crud.webhooks import CrudWebhooks
 
 
@@ -33,6 +34,7 @@ class Controller:
         crud_secrets: CrudSecrets,
         crud_users: CrudUsers,
         crud_users_credentials: CrudCredentials,
+        crud_webhook_logs: CrudWebhookLogs,
         crud_webhooks: CrudWebhooks,
         http: httpx.AsyncClient,
         bypass_ip_check: bool = False,
@@ -50,6 +52,7 @@ class Controller:
                 crud_secrets=crud_secrets,
                 crud_users=crud_users,
                 crud_users_credentials=crud_users_credentials,
+                crud_webhook_logs=crud_webhook_logs,
                 crud_webhooks=crud_webhooks,
                 crud_foreman_backends=crud_foreman_backends,
                 http=http,

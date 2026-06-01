@@ -15,6 +15,7 @@ import pymongo
 
 from catweazle.crud.common import CrudMongo
 from catweazle.crud.secrets import CrudSecrets
+from catweazle.crud.webhook_logs import CrudWebhookLogs
 from catweazle.errors import BackendError
 from catweazle.errors import ResourceNotFound
 from catweazle.model.v2.common import ModelV2DataDelete
@@ -25,13 +26,47 @@ from catweazle.model.v2.webhooks import ModelV2WebhookPost
 from catweazle.model.v2.webhooks import ModelV2WebhookPut
 
 
+REDACTED_SECRET = "<redacted secret>"
+
+
 class CrudWebhooks(CrudMongo):
     def __init__(
-        self, log: logging.Logger, coll: AsyncIOMotorCollection, encryption_key: str
+        self,
+        log: logging.Logger,
+        coll: AsyncIOMotorCollection,
+        encryption_key: str,
+        crud_webhook_logs: CrudWebhookLogs,
     ):
         super(CrudWebhooks, self).__init__(log=log, coll=coll)
         key = base64.urlsafe_b64encode(hashlib.sha256(encryption_key.encode()).digest())
         self._fernet = Fernet(key)
+        self._crud_webhook_logs = crud_webhook_logs
+
+    @property
+    def crud_webhook_logs(self):
+        return self._crud_webhook_logs
+
+    @staticmethod
+    def _redact_secrets(text, secret_values):
+        if not text:
+            return text
+        for secret_value in secret_values:
+            text = text.replace(secret_value, REDACTED_SECRET)
+        return text
+
+    def _redact_dict(self, data, secret_values):
+        if not data:
+            return data
+        redacted = {}
+        for k, v in data.items():
+            if isinstance(v, str):
+                redacted[k] = self._redact_secrets(
+                    text=v,
+                    secret_values=secret_values,
+                )
+            else:
+                redacted[k] = v
+        return redacted
 
     async def index_create(self) -> None:
         self.log.info(f"creating {self.resource_type} indices")
@@ -120,6 +155,7 @@ class CrudWebhooks(CrudMongo):
             try:
                 await self._execute_one(
                     webhook=webhook,
+                    trigger=trigger,
                     instance_data=instance_data,
                     crud_secrets=crud_secrets,
                     http_client=http_client,
@@ -132,6 +168,7 @@ class CrudWebhooks(CrudMongo):
     async def _execute_one(
         self,
         webhook: ModelV2WebhookGet,
+        trigger: str,
         instance_data: dict,
         crud_secrets: CrudSecrets,
         http_client: httpx.AsyncClient,
@@ -143,18 +180,16 @@ class CrudWebhooks(CrudMongo):
             "fqdn": instance_data.get("fqdn"),
             **instance_data.get("meta", {}),
         }
+        instance_id = instance_data.get("id", "")
 
         # Resolve secrets
         secrets_context = {}
+        resolved_secret_values = set()
 
         async def resolve_placeholders(text: str) -> str:
             if not text:
                 return text
 
-            # Simple placeholder replacement for secrets: {secret:id}
-            # and for instance data: {key}
-
-            # Handle secrets first
             secret_pattern = r"\{secret:([a-zA-Z0-9_-]+)\}"
             for match in re.finditer(secret_pattern, text):
                 secret_id = match.group(1)
@@ -163,11 +198,11 @@ class CrudWebhooks(CrudMongo):
                         secrets_context[secret_id] = await crud_secrets.get_secret(
                             secret_id
                         )
+                        resolved_secret_values.add(secrets_context[secret_id])
                     except (ResourceNotFound, BackendError):
                         secrets_context[secret_id] = "SECRET_NOT_FOUND"
                 text = text.replace(match.group(0), secrets_context[secret_id])
 
-            # Handle instance data
             for key, value in context.items():
                 placeholder = "{" + key + "}"
                 if placeholder in text:
@@ -261,6 +296,8 @@ class CrudWebhooks(CrudMongo):
 
         self.log.info(f"Executing webhook {webhook.id} ({webhook.method} {url})")
 
+        response = None
+        error_msg = None
         try:
             response = await request_client.request(
                 method=webhook.method,
@@ -272,8 +309,54 @@ class CrudWebhooks(CrudMongo):
                 timeout=10.0,
             )
             response.raise_for_status()
+        except (httpx.HTTPError, OSError) as e:
+            error_msg = str(e)
+            raise
         finally:
             if client_to_close:
                 await client_to_close.aclose()
             if temp_dir:
                 shutil.rmtree(temp_dir)
+
+            log_request_headers = self._redact_dict(
+                data=headers,
+                secret_values=resolved_secret_values,
+            )
+            log_request_params = self._redact_dict(
+                data=params,
+                secret_values=resolved_secret_values,
+            )
+            log_request_body = None
+            if json_payload:
+                log_request_body = json.loads(
+                    self._redact_secrets(
+                        text=json.dumps(json_payload),
+                        secret_values=resolved_secret_values,
+                    )
+                )
+
+            log_response_status_code = None
+            log_response_headers = None
+            log_response_body = None
+            if response is not None:
+                log_response_status_code = response.status_code
+                log_response_headers = dict(response.headers)
+                log_response_body = response.text
+
+            try:
+                await self.crud_webhook_logs.create(
+                    instance_id=instance_id,
+                    webhook_id=webhook.id,
+                    trigger=trigger,
+                    url=url,
+                    method=webhook.method,
+                    request_headers=log_request_headers,
+                    request_params=log_request_params,
+                    request_body=log_request_body,
+                    response_status_code=log_response_status_code,
+                    response_headers=log_response_headers,
+                    response_body=log_response_body,
+                    error=error_msg,
+                )
+            except BackendError:
+                self.log.error(f"failed to store webhook log for {webhook.id}")

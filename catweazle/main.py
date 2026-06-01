@@ -32,6 +32,7 @@ from catweazle.crud.oauth import CrudOAuthGitHub
 from catweazle.crud.permissions import CrudPermissions
 from catweazle.crud.secrets import CrudSecrets
 from catweazle.crud.users import CrudUsers
+from catweazle.crud.webhook_logs import CrudWebhookLogs
 from catweazle.crud.webhooks import CrudWebhooks
 
 from catweazle.model.v2.users import ModelV2UserPost
@@ -86,10 +87,18 @@ async def lifespan(app: FastAPI):
     )
     await crud_secrets.index_create()
 
+    crud_webhook_logs = CrudWebhookLogs(
+        log=log,
+        coll=mongo_db["webhook_logs"],
+        ttl=settings.app.webhooklogttl,
+    )
+    await crud_webhook_logs.index_create()
+
     crud_webhooks = CrudWebhooks(
         log=log,
         coll=mongo_db["webhooks"],
         encryption_key=settings.app.encryptionkey,
+        crud_webhook_logs=crud_webhook_logs,
     )
     await crud_webhooks.index_create()
 
@@ -137,6 +146,7 @@ async def lifespan(app: FastAPI):
         crud_secrets=crud_secrets,
         crud_users=crud_users,
         crud_users_credentials=crud_users_credentials,
+        crud_webhook_logs=crud_webhook_logs,
         crud_webhooks=crud_webhooks,
         crud_oauth=crud_oauth,
         http=http,

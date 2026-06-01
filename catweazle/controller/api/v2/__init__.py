@@ -15,6 +15,7 @@ from catweazle.controller.api.v2.users_credentials import (
     ControllerApiV2UsersCredentials,
 )
 from catweazle.controller.api.v2.webhooks import ControllerApiV2Webhooks
+from catweazle.controller.api.v2.webhook_logs import ControllerApiV2WebhookLogs
 
 from catweazle.crud.credentials import CrudCredentials
 from catweazle.crud.ldap import CrudLdap
@@ -23,6 +24,7 @@ from catweazle.crud.instances import CrudInstances
 from catweazle.crud.permissions import CrudPermissions
 from catweazle.crud.secrets import CrudSecrets
 from catweazle.crud.users import CrudUsers
+from catweazle.crud.webhook_logs import CrudWebhookLogs
 from catweazle.crud.webhooks import CrudWebhooks
 
 
@@ -38,6 +40,7 @@ class ControllerApiV2:
         crud_secrets: CrudSecrets,
         crud_users: CrudUsers,
         crud_users_credentials: CrudCredentials,
+        crud_webhook_logs: CrudWebhookLogs,
         crud_webhooks: CrudWebhooks,
         http: httpx.AsyncClient,
         bypass_ip_check: bool = False,
@@ -114,6 +117,15 @@ class ControllerApiV2:
                 log=log,
                 authorize=authorize,
                 crud_webhooks=crud_webhooks,
+            ).router,
+            responses={404: {"description": "Not found"}},
+        )
+
+        self.router.include_router(
+            ControllerApiV2WebhookLogs(
+                log=log,
+                authorize=authorize,
+                crud_webhook_logs=crud_webhook_logs,
             ).router,
             responses={404: {"description": "Not found"}},
         )

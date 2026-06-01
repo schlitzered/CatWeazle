@@ -24,6 +24,7 @@ class ConfigApp(BaseModel):
     forwardedallowips: typing.Optional[str] = "127.0.0.0/8"
     bypassIpCheck: bool = False
     instancecreateretries: int = 10
+    webhooklogttl: int = 86400
 
 
 class ConfigLdap(BaseModel):
