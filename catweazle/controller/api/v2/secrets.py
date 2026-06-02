@@ -89,11 +89,20 @@ class ControllerApiV2Secrets:
         payload: ModelV2SecretPost,
         fields: List[str] = Query(None, alias="field"),
     ) -> ModelV2SecretGet:
-        await self.authorize.check_session(request=request, admin=True)
-        return await self.crud_secrets.create(payload=payload, fields=fields)
+        await self.authorize.require_permission(
+            request=request,
+            permission="SECRET:POST",
+        )
+        return await self.crud_secrets.create(
+            payload=payload,
+            fields=fields,
+        )
 
     async def delete(self, request: Request, secret_id: str) -> ModelV2DataDelete:
-        await self.authorize.check_session(request=request, admin=True)
+        await self.authorize.require_permission(
+            request=request,
+            permission="SECRET:DELETE",
+        )
         return await self.crud_secrets.delete(_id=secret_id)
 
     async def get(
@@ -102,8 +111,11 @@ class ControllerApiV2Secrets:
         secret_id: str,
         fields: List[str] = Query(None, alias="field"),
     ) -> ModelV2SecretGet:
-        await self.authorize.check_session(request=request, admin=True)
-        return await self.crud_secrets.get(_id=secret_id, fields=fields)
+        await self.authorize.require_user(request=request)
+        return await self.crud_secrets.get(
+            _id=secret_id,
+            fields=fields,
+        )
 
     async def search(
         self,
@@ -115,7 +127,7 @@ class ControllerApiV2Secrets:
         page: int = Query(None),
         limit: int = Query(None),
     ) -> ModelV2SecretGetMulti:
-        await self.authorize.check_session(request=request, admin=True)
+        await self.authorize.require_user(request=request)
         return await self.crud_secrets.search(
             _id=secret_id,
             fields=fields,
@@ -132,7 +144,12 @@ class ControllerApiV2Secrets:
         payload: ModelV2SecretPut,
         fields: List[str] = Query(None, alias="field"),
     ) -> ModelV2SecretGet:
-        await self.authorize.check_session(request=request, admin=True)
+        await self.authorize.require_permission(
+            request=request,
+            permission="SECRET:POST",
+        )
         return await self.crud_secrets.update(
-            _id=secret_id, payload=payload, fields=fields
+            _id=secret_id,
+            payload=payload,
+            fields=fields,
         )

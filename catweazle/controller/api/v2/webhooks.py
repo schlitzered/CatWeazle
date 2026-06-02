@@ -89,11 +89,20 @@ class ControllerApiV2Webhooks:
         payload: ModelV2WebhookPost,
         fields: List[str] = Query(None, alias="field"),
     ) -> ModelV2WebhookGet:
-        await self.authorize.check_session(request=request, admin=True)
-        return await self.crud_webhooks.create(payload=payload, fields=fields)
+        await self.authorize.require_permission(
+            request=request,
+            permission="WEBHOOK:POST",
+        )
+        return await self.crud_webhooks.create(
+            payload=payload,
+            fields=fields,
+        )
 
     async def delete(self, request: Request, webhook_id: str) -> ModelV2DataDelete:
-        await self.authorize.check_session(request=request, admin=True)
+        await self.authorize.require_permission(
+            request=request,
+            permission="WEBHOOK:DELETE",
+        )
         return await self.crud_webhooks.delete(_id=webhook_id)
 
     async def get(
@@ -102,8 +111,11 @@ class ControllerApiV2Webhooks:
         webhook_id: str,
         fields: List[str] = Query(None, alias="field"),
     ) -> ModelV2WebhookGet:
-        await self.authorize.check_session(request=request, admin=True)
-        return await self.crud_webhooks.get(_id=webhook_id, fields=fields)
+        await self.authorize.require_user(request=request)
+        return await self.crud_webhooks.get(
+            _id=webhook_id,
+            fields=fields,
+        )
 
     async def search(
         self,
@@ -115,7 +127,7 @@ class ControllerApiV2Webhooks:
         page: int = Query(None),
         limit: int = Query(None),
     ) -> ModelV2WebhookGetMulti:
-        await self.authorize.check_session(request=request, admin=True)
+        await self.authorize.require_user(request=request)
         return await self.crud_webhooks.search(
             _id=webhook_id,
             fields=fields,
@@ -132,7 +144,12 @@ class ControllerApiV2Webhooks:
         payload: ModelV2WebhookPut,
         fields: List[str] = Query(None, alias="field"),
     ) -> ModelV2WebhookGet:
-        await self.authorize.check_session(request=request, admin=True)
+        await self.authorize.require_permission(
+            request=request,
+            permission="WEBHOOK:POST",
+        )
         return await self.crud_webhooks.update(
-            _id=webhook_id, payload=payload, fields=fields
+            _id=webhook_id,
+            payload=payload,
+            fields=fields,
         )

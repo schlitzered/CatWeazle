@@ -108,8 +108,15 @@ class WebhookExecutor:
             "ip_address": instance_data.get("ip_address"),
             "dns_indicator": instance_data.get("dns_indicator"),
             "fqdn": instance_data.get("fqdn"),
-            **meta,
+            "instance:id": instance_data.get("id"),
+            "instance:ip_address": instance_data.get("ip_address"),
+            "instance:dns_indicator": instance_data.get("dns_indicator"),
+            "instance:fqdn": instance_data.get("fqdn"),
+            "trigger": trigger,
         }
+        for k, v in meta.items():
+            context[k] = v
+            context[f"instance:meta:{k}"] = v
         instance_id = instance_data.get("id")
         if not instance_id:
             instance_id = ""

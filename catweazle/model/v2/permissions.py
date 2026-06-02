@@ -22,7 +22,7 @@ sort_literal = Literal["id"]
 
 Permissions = Annotated[
     str,
-    StringConstraints(pattern="^(INSTANCE:(DELETE|POST))$"),
+    StringConstraints(pattern="^(INSTANCE:(DELETE|POST)|WEBHOOK:(DELETE|POST)|SECRET:(DELETE|POST)|WEBHOOK_LOG:GET)$"),
 ]
 
 

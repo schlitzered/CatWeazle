@@ -156,12 +156,7 @@ class CrudWebhooks(CrudMongo):
             page=page,
             limit=limit,
         )
-        return ModelV2WebhookGetMulti(
-            result=result["result"],
-            meta={
-                "result_size": result["count"],
-            },
-        )
+        return ModelV2WebhookGetMulti(**result)
 
     async def update(
         self,

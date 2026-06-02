@@ -81,9 +81,9 @@ class ControllerApiV2WebhookLogs:
             description="pagination limit, min value 10, max value 1000",
         ),
     ) -> ModelV2WebhookLogGetMulti:
-        await self.authorize.check_session(
+        await self.authorize.require_permission(
             request=request,
-            admin=True,
+            permission="WEBHOOK_LOG:GET",
         )
         return await self.crud_webhook_logs.search(
             instance_id=instance_id,

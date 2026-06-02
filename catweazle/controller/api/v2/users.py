@@ -111,7 +111,9 @@ class ControllerApiV2Users:
     ):
         await self.authorize.require_admin(request=request)
         return await self.crud_users.create(
-            _id=user_id, payload=data, fields=list(fields)
+            _id=user_id,
+            payload=data,
+            fields=list(fields),
         )
 
     async def delete(self, request: Request, user_id: str):
@@ -127,11 +129,37 @@ class ControllerApiV2Users:
         fields: Set[filter_literal] = Query(default=filter_list),
     ):
         if user_id == "_self":
-            user_id = await self.authorize.get_user(request=request)
-            user_id = user_id.id
+            user_inst = await self.authorize.get_user(request=request)
+            user_id = user_inst.id
         else:
             await self.authorize.require_admin(request=request)
-        return await self.crud_users.get(_id=user_id, fields=list(fields))
+        user_data = await self.crud_users.get(
+            _id=user_id,
+            fields=list(fields),
+        )
+        if "permissions" in fields:
+            if getattr(user_data, "admin", None):
+                user_data.permissions = [
+                    "INSTANCE:POST",
+                    "INSTANCE:DELETE",
+                    "WEBHOOK:POST",
+                    "WEBHOOK:DELETE",
+                    "SECRET:POST",
+                    "SECRET:DELETE",
+                    "WEBHOOK_LOG:GET",
+                ]
+            else:
+                perm_search = await self.crud_permissions.search(
+                    users=f"^{user_id}$",
+                    fields=["permissions"],
+                )
+                perms = []
+                if perm_search and perm_search.result:
+                    for perm_item in perm_search.result:
+                        if perm_item.permissions:
+                            perms.extend(perm_item.permissions)
+                user_data.permissions = list(set(perms))
+        return user_data
 
     async def search(
         self,

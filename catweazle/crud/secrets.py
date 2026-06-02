@@ -76,10 +76,7 @@ class CrudSecrets(CrudMongo):
             page=page,
             limit=limit,
         )
-        return ModelV2SecretGetMulti(
-            result=result["result"],
-            meta={"result_size": result["count"]}
-        )
+        return ModelV2SecretGetMulti(**result)
 
     async def update(
         self, _id: str, payload: ModelV2SecretPut, fields: list

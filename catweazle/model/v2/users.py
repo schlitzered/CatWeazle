@@ -15,6 +15,7 @@ filter_literal = Literal[
     "backend",
     "email",
     "name",
+    "permissions",
 ]
 
 filter_list = set(typing_get_args(filter_literal))
@@ -33,6 +34,7 @@ class ModelV2UserGet(BaseModel):
     name: Optional[StrictStr] = None
     id: Optional[StrictStr] = None
     backend: Optional[StrictStr] = None
+    permissions: Optional[List[str]] = None
 
 
 class ModelV2UserGetMulti(BaseModel):
