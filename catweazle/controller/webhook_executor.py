@@ -260,7 +260,7 @@ class WebhookExecutor:
                 self._log.error(
                     msg=f"Failed to execute webhook {webhook.id}: {e}",
                 )
-                if webhook.fail_on_error and trigger.startswith("pre-"):
+                if webhook.fail_on_error:
                     raise WebhookExecutionError(
                         webhook_id=webhook.id,
                     ) from e

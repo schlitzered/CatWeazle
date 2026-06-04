@@ -95,6 +95,8 @@ def run():
         "test-webhook-fail-4xx",
         "test-webhook-fail-5xx",
         "test-webhook-secrets",
+        "test-webhook-post-create-fail",
+        "test-webhook-post-delete-fail",
     ]:
         client.delete(
             url=f"/api/v2/webhooks/{wh_id}",
@@ -298,6 +300,80 @@ def run():
     # Cleanup 5xx fail webhook
     client.delete(
         url="/api/v2/webhooks/test-webhook-fail-5xx",
+        headers=headers,
+    ).raise_for_status()
+
+    # Test post-create fail
+    client.post(
+        url="/api/v2/webhooks",
+        json={
+            "id": "test-webhook-post-create-fail",
+            "url": "http://localhost:8888/webhook-fail-4xx",
+            "method": "POST",
+            "triggers": ["post-create"],
+            "fail_on_error": True,
+        },
+        headers=headers,
+    ).raise_for_status()
+
+    create_inst_post_fail = client.post(
+        url="/api/v2/instances/test-instance-post-fail",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.90",
+            "meta": {
+                "role": "post-fail",
+            },
+        },
+        headers=headers,
+    )
+    if create_inst_post_fail.status_code == 201:
+        raise AssertionError("Instance creation should have failed due to post-create webhook")
+
+    # Verify instance was rolled back (not found)
+    get_inst_post_fail = client.get(
+        url="/api/v2/instances/test-instance-post-fail",
+        headers=headers,
+    )
+    if get_inst_post_fail.status_code != 404:
+        raise AssertionError("Instance should have been deleted after post-create failure")
+
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-post-create-fail",
+        headers=headers,
+    ).raise_for_status()
+
+    # Test post-delete fail
+    client.post(
+        url="/api/v2/webhooks",
+        json={
+            "id": "test-webhook-post-delete-fail",
+            "url": "http://localhost:8888/webhook-fail-4xx",
+            "method": "POST",
+            "triggers": ["post-delete"],
+            "fail_on_error": True,
+        },
+        headers=headers,
+    ).raise_for_status()
+
+    # Use test-instance-1 for post-delete fail test
+    delete_inst_fail = client.delete(
+        url="/api/v2/instances/test-instance-1",
+        headers=headers,
+    )
+    if delete_inst_fail.status_code == 200:
+        raise AssertionError("Instance deletion should have failed due to post-delete webhook")
+
+    # Verify instance still exists
+    get_inst_post_del_fail = client.get(
+        url="/api/v2/instances/test-instance-1",
+        headers=headers,
+    )
+    if get_inst_post_del_fail.status_code != 200:
+        raise AssertionError("Instance should NOT have been deleted after post-delete failure")
+
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-post-delete-fail",
         headers=headers,
     ).raise_for_status()
 

@@ -193,10 +193,20 @@ class ControllerApiV2Instances:
                 )
                 raise err
 
-        await self._webhook_executor.execute(
-            trigger="post-create",
-            instance_data=instance.model_dump(),
-        )
+        try:
+            await self._webhook_executor.execute(
+                trigger="post-create",
+                instance_data=instance.model_dump(),
+            )
+        except (
+            WebhookExecutionError,
+            BackendError,
+        ) as err:
+            await self.delete(
+                instance_id=instance_id,
+                request=request,
+            )
+            raise err
 
         return instance
 
@@ -211,6 +221,11 @@ class ControllerApiV2Instances:
 
         await self._webhook_executor.execute(
             trigger="pre-delete",
+            instance_data=instance_data,
+        )
+
+        await self._webhook_executor.execute(
+            trigger="post-delete",
             instance_data=instance_data,
         )
 
@@ -229,11 +244,6 @@ class ControllerApiV2Instances:
             except BackendError:
                 pass
         result = await self.crud_instances.delete(_id=instance_id)
-
-        await self._webhook_executor.execute(
-            trigger="post-delete",
-            instance_data=instance_data,
-        )
 
         return result
 
