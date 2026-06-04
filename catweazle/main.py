@@ -39,7 +39,6 @@ from catweazle.model.v2.users import ModelV2UserPost
 
 from catweazle.errors import ResourceNotFound
 
-
 settings = Config()
 
 

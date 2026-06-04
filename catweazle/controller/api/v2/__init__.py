@@ -11,7 +11,9 @@ from catweazle.controller.api.v2.instances import ControllerApiV2Instances
 from catweazle.controller.api.v2.permissions import ControllerApiV2Permissions
 from catweazle.controller.api.v2.secrets import ControllerApiV2Secrets
 from catweazle.controller.api.v2.users import ControllerApiV2Users
-from catweazle.controller.api.v2.users_credentials import ControllerApiV2UsersCredentials
+from catweazle.controller.api.v2.users_credentials import (
+    ControllerApiV2UsersCredentials,
+)
 from catweazle.controller.api.v2.webhooks import ControllerApiV2Webhooks
 from catweazle.controller.api.v2.webhook_logs import ControllerApiV2WebhookLogs
 

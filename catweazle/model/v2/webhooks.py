@@ -6,6 +6,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from catweazle.model.v2.common import ModelV2MetaMulti
 
 webhook_methods = Literal["GET", "POST", "PUT", "DELETE"]
 webhook_triggers = Literal["pre-create", "post-create", "pre-delete", "post-delete"]
@@ -44,9 +45,6 @@ class ModelV2WebhookPut(BaseModel):
 
 class ModelV2WebhookGet(ModelV2WebhookPost):
     pass
-
-
-from catweazle.model.v2.common import ModelV2MetaMulti
 
 
 class ModelV2WebhookGetMulti(BaseModel):

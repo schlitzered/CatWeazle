@@ -19,7 +19,9 @@ from catweazle.model.v2.secrets import ModelV2SecretPut
 
 
 class CrudSecrets(CrudMongo):
-    def __init__(self, log: logging.Logger, coll: AsyncIOMotorCollection, encryption_key: str):
+    def __init__(
+        self, log: logging.Logger, coll: AsyncIOMotorCollection, encryption_key: str
+    ):
         super(CrudSecrets, self).__init__(log=log, coll=coll)
         key = base64.urlsafe_b64encode(hashlib.sha256(encryption_key.encode()).digest())
         self._fernet = Fernet(key)
@@ -35,7 +37,9 @@ class CrudSecrets(CrudMongo):
     def _decrypt(self, data: str) -> str:
         return self._fernet.decrypt(data.encode()).decode()
 
-    async def create(self, payload: ModelV2SecretPost, fields: list) -> ModelV2SecretGet:
+    async def create(
+        self, payload: ModelV2SecretPost, fields: list
+    ) -> ModelV2SecretGet:
         data = payload.model_dump()
         data["secret"] = self._encrypt(data["secret"])
         data["created"] = datetime.now(UTC)

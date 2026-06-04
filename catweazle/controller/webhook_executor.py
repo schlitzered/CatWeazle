@@ -348,6 +348,4 @@ class WebhookExecutor:
                     error=error_msg,
                 )
             except BackendError:
-                self._log.error(
-                    f"failed to store webhook log for {webhook.id}"
-                )
+                self._log.error(f"failed to store webhook log for {webhook.id}")
