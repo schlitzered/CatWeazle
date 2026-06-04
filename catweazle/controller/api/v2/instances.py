@@ -18,6 +18,7 @@ from catweazle.crud.webhooks import CrudWebhooks
 from catweazle.crud.webhook_logs import CrudWebhookLogs
 from catweazle.controller.webhook_executor import WebhookExecutor
 from catweazle.errors import BackendError
+from catweazle.errors import WebhookExecutionError
 
 from catweazle.model.v2.common import ModelV2DataDelete
 from catweazle.model.v2.common import filter_complex_search
@@ -163,7 +164,10 @@ class ControllerApiV2Instances:
                 trigger="pre-create",
                 instance_data=instance.model_dump(),
             )
-        except (httpx.HTTPError, BackendError) as err:
+        except (
+            WebhookExecutionError,
+            BackendError,
+        ) as err:
             await self.delete(
                 instance_id=instance_id,
                 request=request,

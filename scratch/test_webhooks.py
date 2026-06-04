@@ -7,6 +7,14 @@ import httpx
 
 class DummyHandler(http.server.BaseHTTPRequestHandler):
     def do_request(self):
+        if self.path == "/webhook-fail-4xx":
+            self.send_response(code=400)
+            self.end_headers()
+            return
+        if self.path == "/webhook-fail-5xx":
+            self.send_response(code=500)
+            self.end_headers()
+            return
         content_length_str = self.headers.get("Content-Length")
         content_length = 0
         if content_length_str:
@@ -78,6 +86,36 @@ def run():
         "x-secret": cred_secret,
     }
 
+    # Cleanup existing
+    for wh_id in [
+        "test-webhook-pre-create",
+        "test-webhook-post-create",
+        "test-webhook-pre-delete",
+        "test-webhook-post-delete",
+        "test-webhook-fail-4xx",
+        "test-webhook-fail-5xx",
+        "test-webhook-secrets",
+    ]:
+        client.delete(
+            url=f"/api/v2/webhooks/{wh_id}",
+            headers=headers,
+        )
+    client.delete(
+        url="/api/v2/secrets/test-secret-1",
+        headers=headers,
+    )
+
+    # Create a secret for testing resolution
+    client.post(
+        url="/api/v2/secrets",
+        json={
+            "id": "test-secret-1",
+            "secret": "very-secret-value",
+            "description": "test secret for webhooks",
+        },
+        headers=headers,
+    ).raise_for_status()
+
     webhooks_to_create = [
         {
             "id": "test-webhook-pre-create",
@@ -143,6 +181,17 @@ def run():
                 "role": "{instance:meta:role}",
             },
         },
+        {
+            "id": "test-webhook-secrets",
+            "url": "http://localhost:8888/webhook-secrets",
+            "method": "POST",
+            "triggers": ["post-create"],
+            "username": "user-{instance:id}",
+            "password": "{secret:test-secret-1}",
+            "headers": {
+                "X-Secret": "{secret:test-secret-1}",
+            },
+        },
     ]
 
     for webhook in webhooks_to_create:
@@ -151,6 +200,8 @@ def run():
             json=webhook,
             headers=headers,
         )
+        if create_wh_response.status_code != 201:
+            print(f"Failed to create webhook {webhook['id']}: {create_wh_response.text}")
         create_wh_response.raise_for_status()
 
     instances = [
@@ -182,7 +233,73 @@ def run():
             json=instance["payload"],
             headers=headers,
         )
+        if create_inst_response.status_code != 201:
+            print(f"Failed to create instance {instance['id']}: {create_inst_response.text}")
         create_inst_response.raise_for_status()
+
+    # Now create failing webhooks for negative tests
+    failing_webhooks = [
+        {
+            "id": "test-webhook-fail-4xx",
+            "url": "http://localhost:8888/webhook-fail-4xx",
+            "method": "POST",
+            "triggers": ["pre-create"],
+            "fail_on_error": True,
+        },
+        {
+            "id": "test-webhook-fail-5xx",
+            "url": "http://localhost:8888/webhook-fail-5xx",
+            "method": "POST",
+            "triggers": ["pre-create"],
+            "fail_on_error": True,
+        },
+    ]
+    for webhook in failing_webhooks:
+        client.post(
+            url="/api/v2/webhooks",
+            json=webhook,
+            headers=headers,
+        ).raise_for_status()
+
+    create_inst_fail_400 = client.post(
+        url="/api/v2/instances/test-instance-fail-400",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.70",
+            "meta": {
+                "role": "fail-400",
+            },
+        },
+        headers=headers,
+    )
+    if create_inst_fail_400.status_code == 201:
+        raise AssertionError("Instance creation should have failed due to 4xx webhook")
+
+    # Delete 4xx fail webhook to test 5xx
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-fail-4xx",
+        headers=headers,
+    ).raise_for_status()
+
+    create_inst_fail_500 = client.post(
+        url="/api/v2/instances/test-instance-fail-500",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.80",
+            "meta": {
+                "role": "fail-500",
+            },
+        },
+        headers=headers,
+    )
+    if create_inst_fail_500.status_code == 201:
+        raise AssertionError("Instance creation should have failed due to 5xx webhook")
+
+    # Cleanup 5xx fail webhook
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-fail-5xx",
+        headers=headers,
+    ).raise_for_status()
 
     time.sleep(2)
 
@@ -195,12 +312,23 @@ def run():
 
     time.sleep(2)
 
-    for webhook in webhooks_to_create:
+    for wh_id in [
+        "test-webhook-pre-create",
+        "test-webhook-post-create",
+        "test-webhook-pre-delete",
+        "test-webhook-post-delete",
+        "test-webhook-secrets",
+    ]:
         delete_wh_response = client.delete(
-            url=f"/api/v2/webhooks/{webhook['id']}",
+            url=f"/api/v2/webhooks/{wh_id}",
             headers=headers,
         )
         delete_wh_response.raise_for_status()
+
+    client.delete(
+        url="/api/v2/secrets/test-secret-1",
+        headers=headers,
+    ).raise_for_status()
 
     delete_cred_response = client.delete(
         url=f"/api/v2/users/admin/credentials/{cred_id}",
