@@ -129,10 +129,6 @@ class ControllerApiV2Instances:
         return self._crud_webhooks
 
     @property
-    def crud_webhook_logs(self):
-        return self._crud_webhook_logs
-
-    @property
     def http_client(self):
         return self._http_client
 
