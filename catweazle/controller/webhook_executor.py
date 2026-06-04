@@ -306,12 +306,10 @@ class WebhookExecutor:
         )
 
         client = self._http_client
-        client_to_close = None
         if ssl_ctx:
             client = httpx.AsyncClient(
                 verify=ssl_ctx,
             )
-            client_to_close = client
 
         self._log.info(
             f"Executing webhook {webhook.id} ({webhook.method} {resolved['url']})"
@@ -334,9 +332,6 @@ class WebhookExecutor:
             error_msg = str(e)
             raise e
         finally:
-            if client_to_close:
-                await client_to_close.aclose()
-
             try:
                 await self._crud_webhook_logs.create(
                     instance_id=instance_id,
