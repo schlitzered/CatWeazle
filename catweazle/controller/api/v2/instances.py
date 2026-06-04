@@ -30,6 +30,7 @@ from catweazle.model.v2.instances import ModelV2InstanceGet
 from catweazle.model.v2.instances import ModelV2InstanceGetMulti
 from catweazle.model.v2.instances import ModelV2instancePost
 from catweazle.model.v2.instances import ModelV2instancePut
+from catweazle.model.v2.permissions import ModelV2Permission
 
 
 class ControllerApiV2Instances:
@@ -148,7 +149,8 @@ class ControllerApiV2Instances:
         fields: Set[filter_literal] = Query(default=filter_list),
     ):
         await self.authorize.require_permission(
-            request=request, permission="INSTANCE:POST"
+            request=request,
+            permission=ModelV2Permission.INSTANCE_POST,
         )
 
         instance = await self.crud_instances.create(
@@ -208,7 +210,8 @@ class ControllerApiV2Instances:
 
     async def delete(self, request: Request, instance_id: str):
         await self.authorize.require_permission(
-            request=request, permission="INSTANCE:DELETE"
+            request=request,
+            permission=ModelV2Permission.INSTANCE_DELETE,
         )
         instance = await self.crud_instances.get(
             _id=instance_id, fields=list(filter_list)
@@ -313,7 +316,8 @@ class ControllerApiV2Instances:
         fields: Set[filter_literal] = Query(default=filter_list),
     ):
         await self.authorize.require_permission(
-            request=request, permission="INSTANCE:POST"
+            request=request,
+            permission=ModelV2Permission.INSTANCE_POST,
         )
         return await self.crud_instances.update(
             _id=instance_id, payload=data, fields=list(fields)

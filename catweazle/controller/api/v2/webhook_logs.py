@@ -11,6 +11,7 @@ from catweazle.crud.webhook_logs import CrudWebhookLogs
 
 from catweazle.model.v2.common import sort_order_literal
 from catweazle.model.v2.webhook_logs import ModelV2WebhookLogGetMulti
+from catweazle.model.v2.permissions import ModelV2Permission
 
 
 class ControllerApiV2WebhookLogs:
@@ -83,7 +84,7 @@ class ControllerApiV2WebhookLogs:
     ) -> ModelV2WebhookLogGetMulti:
         await self.authorize.require_permission(
             request=request,
-            permission="WEBHOOK_LOG:GET",
+            permission=ModelV2Permission.WEBHOOK_LOG_GET,
         )
         return await self.crud_webhook_logs.search(
             instance_id=instance_id,

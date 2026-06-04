@@ -20,6 +20,7 @@ from catweazle.model.v2.users import ModelV2UserGet
 from catweazle.model.v2.users import ModelV2UserGetMulti
 from catweazle.model.v2.users import ModelV2UserPost
 from catweazle.model.v2.users import ModelV2UserPut
+from catweazle.model.v2.permissions import ModelV2Permission
 
 
 class ControllerApiV2Users:
@@ -140,13 +141,13 @@ class ControllerApiV2Users:
         if "permissions" in fields:
             if getattr(user_data, "admin", None):
                 user_data.permissions = [
-                    "INSTANCE:POST",
-                    "INSTANCE:DELETE",
-                    "WEBHOOK:POST",
-                    "WEBHOOK:DELETE",
-                    "SECRET:POST",
-                    "SECRET:DELETE",
-                    "WEBHOOK_LOG:GET",
+                    ModelV2Permission.INSTANCE_POST,
+                    ModelV2Permission.INSTANCE_DELETE,
+                    ModelV2Permission.WEBHOOK_POST,
+                    ModelV2Permission.WEBHOOK_DELETE,
+                    ModelV2Permission.SECRET_POST,
+                    ModelV2Permission.SECRET_DELETE,
+                    ModelV2Permission.WEBHOOK_LOG_GET,
                 ]
             else:
                 perm_search = await self.crud_permissions.search(

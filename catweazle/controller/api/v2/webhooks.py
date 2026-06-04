@@ -13,6 +13,7 @@ from catweazle.model.v2.webhooks import ModelV2WebhookGet
 from catweazle.model.v2.webhooks import ModelV2WebhookGetMulti
 from catweazle.model.v2.webhooks import ModelV2WebhookPost
 from catweazle.model.v2.webhooks import ModelV2WebhookPut
+from catweazle.model.v2.permissions import ModelV2Permission
 
 
 class ControllerApiV2Webhooks:
@@ -91,7 +92,7 @@ class ControllerApiV2Webhooks:
     ) -> ModelV2WebhookGet:
         await self.authorize.require_permission(
             request=request,
-            permission="WEBHOOK:POST",
+            permission=ModelV2Permission.WEBHOOK_POST,
         )
         return await self.crud_webhooks.create(
             payload=payload,
@@ -101,7 +102,7 @@ class ControllerApiV2Webhooks:
     async def delete(self, request: Request, webhook_id: str) -> ModelV2DataDelete:
         await self.authorize.require_permission(
             request=request,
-            permission="WEBHOOK:DELETE",
+            permission=ModelV2Permission.WEBHOOK_DELETE,
         )
         return await self.crud_webhooks.delete(_id=webhook_id)
 
@@ -146,7 +147,7 @@ class ControllerApiV2Webhooks:
     ) -> ModelV2WebhookGet:
         await self.authorize.require_permission(
             request=request,
-            permission="WEBHOOK:POST",
+            permission=ModelV2Permission.WEBHOOK_POST,
         )
         return await self.crud_webhooks.update(
             _id=webhook_id,

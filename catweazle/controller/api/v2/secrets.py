@@ -13,6 +13,7 @@ from catweazle.model.v2.secrets import ModelV2SecretGet
 from catweazle.model.v2.secrets import ModelV2SecretGetMulti
 from catweazle.model.v2.secrets import ModelV2SecretPost
 from catweazle.model.v2.secrets import ModelV2SecretPut
+from catweazle.model.v2.permissions import ModelV2Permission
 
 
 class ControllerApiV2Secrets:
@@ -91,7 +92,7 @@ class ControllerApiV2Secrets:
     ) -> ModelV2SecretGet:
         await self.authorize.require_permission(
             request=request,
-            permission="SECRET:POST",
+            permission=ModelV2Permission.SECRET_POST,
         )
         return await self.crud_secrets.create(
             payload=payload,
@@ -101,7 +102,7 @@ class ControllerApiV2Secrets:
     async def delete(self, request: Request, secret_id: str) -> ModelV2DataDelete:
         await self.authorize.require_permission(
             request=request,
-            permission="SECRET:DELETE",
+            permission=ModelV2Permission.SECRET_DELETE,
         )
         return await self.crud_secrets.delete(_id=secret_id)
 
@@ -146,7 +147,7 @@ class ControllerApiV2Secrets:
     ) -> ModelV2SecretGet:
         await self.authorize.require_permission(
             request=request,
-            permission="SECRET:POST",
+            permission=ModelV2Permission.SECRET_POST,
         )
         return await self.crud_secrets.update(
             _id=secret_id,
