@@ -220,11 +220,6 @@ class ControllerApiV2Instances:
             instance_data=instance_data,
         )
 
-        await self._webhook_executor.execute(
-            trigger="post-delete",
-            instance_data=instance_data,
-        )
-
         for foreman in self.crud_foreman_backends:
             try:
                 await foreman.delete_dns(
@@ -239,6 +234,11 @@ class ControllerApiV2Instances:
                 )
             except BackendError:
                 pass
+
+        await self._webhook_executor.execute(
+            trigger="post-delete",
+            instance_data=instance_data,
+        )
         result = await self.crud_instances.delete(_id=instance_id)
 
         return result
