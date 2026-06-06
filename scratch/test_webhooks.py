@@ -3,16 +3,38 @@ import json
 import sys
 import threading
 import time
+import urllib.parse
 import httpx
 
 class DummyHandler(http.server.BaseHTTPRequestHandler):
     def do_request(self):
-        if self.path == "/webhook-fail-4xx":
-            self.send_response(code=400)
+        parsed_path = urllib.parse.urlparse(
+            url=self.path,
+        )
+        params = urllib.parse.parse_qs(
+            qs=parsed_path.query,
+        )
+        delay_val = params.get("delay")
+        if delay_val:
+            try:
+                time.sleep(
+                    float(
+                        delay_val[0],
+                    ),
+                )
+            except ValueError:
+                pass
+
+        if parsed_path.path == "/webhook-fail-4xx":
+            self.send_response(
+                code=400,
+            )
             self.end_headers()
             return
-        if self.path == "/webhook-fail-5xx":
-            self.send_response(code=500)
+        if parsed_path.path == "/webhook-fail-5xx":
+            self.send_response(
+                code=500,
+            )
             self.end_headers()
             return
         content_length_str = self.headers.get("Content-Length")
@@ -31,7 +53,9 @@ class DummyHandler(http.server.BaseHTTPRequestHandler):
         if body:
             sys.stdout.write(f"Body: {body}\n")
         sys.stdout.write("-------------------------------\n")
-        self.send_response(code=200)
+        self.send_response(
+            code=200,
+        )
         self.end_headers()
 
     def do_GET(self):
@@ -97,6 +121,10 @@ def run():
         "test-webhook-secrets",
         "test-webhook-post-create-fail",
         "test-webhook-post-delete-fail",
+        "test-webhook-timeout",
+        "test-webhook-timeout-success",
+        "test-webhook-acceptable-codes",
+        "test-webhook-acceptable-codes-fail",
     ]:
         client.delete(
             url=f"/api/v2/webhooks/{wh_id}",
@@ -106,6 +134,19 @@ def run():
         url="/api/v2/secrets/test-secret-1",
         headers=headers,
     )
+
+    for inst_id in [
+        "test-instance-1",
+        "test-instance-2",
+        "test-instance-timeout-fail",
+        "test-instance-timeout-success",
+        "test-instance-acceptable-success",
+        "test-instance-acceptable-fail",
+    ]:
+        client.delete(
+            url=f"/api/v2/instances/{inst_id}",
+            headers=headers,
+        )
 
     # Create a secret for testing resolution
     client.post(
@@ -374,6 +415,156 @@ def run():
 
     client.delete(
         url="/api/v2/webhooks/test-webhook-post-delete-fail",
+        headers=headers,
+    ).raise_for_status()
+
+    create_timeout_fail_wh = client.post(
+        url="/api/v2/webhooks",
+        json={
+            "id": "test-webhook-timeout",
+            "url": "http://localhost:8888/webhook?delay=2",
+            "method": "POST",
+            "triggers": ["post-create"],
+            "timeout": 1.0,
+            "fail_on_error": True,
+        },
+        headers=headers,
+    )
+    create_timeout_fail_wh.raise_for_status()
+
+    create_inst_timeout_fail = client.post(
+        url="/api/v2/instances/test-instance-timeout-fail",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.100",
+            "meta": {
+                "role": "timeout-fail",
+            },
+        },
+        headers=headers,
+    )
+    if create_inst_timeout_fail.status_code == 201:
+        raise AssertionError(
+            "Instance creation should have failed due to webhook timeout",
+        )
+
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-timeout",
+        headers=headers,
+    ).raise_for_status()
+
+    create_timeout_success_wh = client.post(
+        url="/api/v2/webhooks",
+        json={
+            "id": "test-webhook-timeout-success",
+            "url": "http://localhost:8888/webhook?delay=2",
+            "method": "POST",
+            "triggers": ["post-create"],
+            "timeout": 4.0,
+            "fail_on_error": True,
+        },
+        headers=headers,
+    )
+    create_timeout_success_wh.raise_for_status()
+
+    create_inst_timeout_success = client.post(
+        url="/api/v2/instances/test-instance-timeout-success",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.101",
+            "meta": {
+                "role": "timeout-success",
+            },
+        },
+        headers=headers,
+    )
+    create_inst_timeout_success.raise_for_status()
+
+    client.delete(
+        url="/api/v2/instances/test-instance-timeout-success",
+        headers=headers,
+    ).raise_for_status()
+
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-timeout-success",
+        headers=headers,
+    ).raise_for_status()
+
+    create_acceptable_codes_wh = client.post(
+        url="/api/v2/webhooks",
+        json={
+            "id": "test-webhook-acceptable-codes",
+            "url": "http://localhost:8888/webhook-fail-4xx",
+            "method": "POST",
+            "triggers": ["post-create"],
+            "fail_on_error": True,
+            "acceptable_status_codes": [
+                "400",
+                "201",
+            ],
+        },
+        headers=headers,
+    )
+    create_acceptable_codes_wh.raise_for_status()
+
+    create_inst_acceptable_success = client.post(
+        url="/api/v2/instances/test-instance-acceptable-success",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.102",
+            "meta": {
+                "role": "acceptable-success",
+            },
+        },
+        headers=headers,
+    )
+    create_inst_acceptable_success.raise_for_status()
+
+    client.delete(
+        url="/api/v2/instances/test-instance-acceptable-success",
+        headers=headers,
+    ).raise_for_status()
+
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-acceptable-codes",
+        headers=headers,
+    ).raise_for_status()
+
+    create_acceptable_codes_fail_wh = client.post(
+        url="/api/v2/webhooks",
+        json={
+            "id": "test-webhook-acceptable-codes-fail",
+            "url": "http://localhost:8888/webhook-fail-5xx",
+            "method": "POST",
+            "triggers": ["post-create"],
+            "fail_on_error": True,
+            "acceptable_status_codes": [
+                "400",
+                "201",
+            ],
+        },
+        headers=headers,
+    )
+    create_acceptable_codes_fail_wh.raise_for_status()
+
+    create_inst_acceptable_fail = client.post(
+        url="/api/v2/instances/test-instance-acceptable-fail",
+        json={
+            "dns_indicator": "test-NUM",
+            "ip_address": "192.168.1.103",
+            "meta": {
+                "role": "acceptable-fail",
+            },
+        },
+        headers=headers,
+    )
+    if create_inst_acceptable_fail.status_code == 201:
+        raise AssertionError(
+            "Instance creation should have failed due to unaccepted status code 500",
+        )
+
+    client.delete(
+        url="/api/v2/webhooks/test-webhook-acceptable-codes-fail",
         headers=headers,
     ).raise_for_status()
 

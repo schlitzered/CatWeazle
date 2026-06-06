@@ -34,6 +34,30 @@ class WebhookExecutor:
         self._crud_webhook_logs = crud_webhook_logs
         self._http_client = http_client
 
+    @staticmethod
+    def _is_status_code_acceptable(
+        *,
+        status_code: int,
+        acceptable_status_codes: typing.Optional[typing.List[str]],
+    ) -> bool:
+        if not acceptable_status_codes:
+            return 200 <= status_code < 300
+        status_str = str(
+            status_code,
+        )
+        for pattern in acceptable_status_codes:
+            pattern = pattern.lower()
+            if pattern.endswith(
+                "xx",
+            ):
+                if status_str.startswith(
+                    pattern[0],
+                ):
+                    return True
+            elif pattern == status_str:
+                return True
+        return False
+
     def _redact(
         self,
         *,
@@ -319,12 +343,20 @@ class WebhookExecutor:
                 method=webhook.method,
                 url=resolved["url"],
                 headers=resolved["headers"],
-                params=resolved["params"],
+                params=resolved["params"] or None,
                 json=resolved["json_payload"],
                 auth=resolved["auth"],
-                timeout=10.0,
+                timeout=webhook.timeout if webhook.timeout is not None else 5.0,
             )
-            response.raise_for_status()
+            if not self._is_status_code_acceptable(
+                status_code=response.status_code,
+                acceptable_status_codes=webhook.acceptable_status_codes,
+            ):
+                raise httpx.HTTPStatusError(
+                    message=f"Acceptable status codes are {webhook.acceptable_status_codes}, but got HTTP {response.status_code}",
+                    request=response.request,
+                    response=response,
+                )
             self._log.info(
                 f"Successfully executed webhook {webhook.id}: HTTP {response.status_code}"
             )

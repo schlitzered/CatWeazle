@@ -1,3 +1,5 @@
+import re
+from typing import Annotated
 from typing import Any
 from typing import Dict
 from typing import List
@@ -5,11 +7,37 @@ from typing import Literal
 from typing import Optional
 
 from pydantic import BaseModel
+from pydantic import BeforeValidator
 
 from catweazle.model.v2.common import ModelV2MetaMulti
 
 webhook_methods = Literal["GET", "POST", "PUT", "DELETE"]
 webhook_triggers = Literal["pre-create", "post-create", "pre-delete", "post-delete"]
+
+
+def _validate_acceptable_status_codes(
+    value: list[str]|None,
+) -> list[str]|None:
+    if value is None:
+        return value
+    if type(value) is not list:
+        raise ValueError(
+            "acceptable_status_codes must be a list",
+        )
+    for item in value:
+        if not (type(item) is str):
+            raise ValueError(
+                "Each acceptable status code must be a string",
+            )
+        item = item.strip().lower()
+        if not re.match(
+            pattern=r"^[1-5]([0-9]{2}|xx)$",
+            string=item,
+        ):
+            raise ValueError(
+                f"Invalid status code pattern: {item}",
+            )
+    return value
 
 
 class ModelV2WebhookPost(BaseModel):
@@ -26,6 +54,8 @@ class ModelV2WebhookPost(BaseModel):
     ssl_key: Optional[str] = None
     ssl_cert: Optional[str] = None
     ssl_ca: Optional[str] = None
+    acceptable_status_codes: Optional[Annotated[List[str], BeforeValidator(_validate_acceptable_status_codes)]] = None
+    timeout: Optional[float] = 5.0
 
 
 class ModelV2WebhookPut(BaseModel):
@@ -41,6 +71,8 @@ class ModelV2WebhookPut(BaseModel):
     ssl_key: Optional[str] = None
     ssl_cert: Optional[str] = None
     ssl_ca: Optional[str] = None
+    acceptable_status_codes: Optional[Annotated[List[str], BeforeValidator(_validate_acceptable_status_codes)]] = None
+    timeout: Optional[float] = None
 
 
 class ModelV2WebhookGet(ModelV2WebhookPost):

@@ -1,5 +1,6 @@
 import logging
 import sys
+import asyncio
 from fastapi import FastAPI
 from fastapi import Request
 from fastapi import Response
@@ -57,6 +58,18 @@ async def catch_all(
     logger.info(
         f"BODY: {body_str}"
     )
+
+    delay_val = params.get("delay")
+    if not delay_val:
+        delay_val = headers.get("delay")
+    if delay_val:
+        try:
+            delay = float(delay_val)
+            await asyncio.sleep(
+                delay=delay,
+            )
+        except ValueError:
+            pass
 
     status_code = 200
     if method == "POST":

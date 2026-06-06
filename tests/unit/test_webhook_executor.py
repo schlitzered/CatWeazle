@@ -8,6 +8,7 @@ import httpx
 from catweazle.controller.webhook_executor import WebhookExecutor
 from catweazle.errors import WebhookExecutionError
 from catweazle.model.v2.webhooks import ModelV2WebhookGet
+from catweazle.model.v2.webhooks import ModelV2WebhookPost
 
 class TestWebhookExecutor(IsolatedAsyncioTestCase):
     def setUp(self):
@@ -247,4 +248,202 @@ class TestWebhookExecutor(IsolatedAsyncioTestCase):
                     cadata=webhook.ssl_ca,
                 )
                 mock_ssl_ctx.load_cert_chain.assert_called()
+
+    async def test_acceptable_status_codes_success(self):
+        webhook = ModelV2WebhookGet(
+            id="test-webhook-1",
+            url="http://localhost/webhook",
+            method="POST",
+            triggers=["post-create"],
+            acceptable_status_codes=["2xx", "301"],
+        )
+        instance_data = {
+            "id": "inst-1",
+        }
+        self.mock_crud_webhook_logs.create = AsyncMock()
+        mock_response = httpx.Response(
+            status_code=301,
+            request=httpx.Request(
+                method="POST",
+                url="http://localhost",
+            ),
+        )
+        self.mock_http_client.request = AsyncMock(
+            return_value=mock_response,
+        )
+        await self.executor._execute_one(
+            webhook=webhook,
+            trigger="post-create",
+            instance_data=instance_data,
+        )
+        self.mock_crud_webhook_logs.create.assert_called_once()
+        log_kwargs = self.mock_crud_webhook_logs.create.call_args.kwargs
+        self.assertEqual(
+            first=log_kwargs["response_status_code"],
+            second=301,
+        )
+
+    async def test_acceptable_status_codes_failure(self):
+        webhook = ModelV2WebhookGet(
+            id="test-webhook-1",
+            url="http://localhost/webhook",
+            method="POST",
+            triggers=["post-create"],
+            acceptable_status_codes=["200", "201"],
+        )
+        instance_data = {
+            "id": "inst-1",
+        }
+        self.mock_crud_webhook_logs.create = AsyncMock()
+        mock_response = httpx.Response(
+            status_code=204,
+            request=httpx.Request(
+                method="POST",
+                url="http://localhost",
+            ),
+        )
+        self.mock_http_client.request = AsyncMock(
+            return_value=mock_response,
+        )
+        with self.assertRaises(
+            expected_exception=httpx.HTTPStatusError,
+        ):
+            await self.executor._execute_one(
+                webhook=webhook,
+                trigger="post-create",
+                instance_data=instance_data,
+            )
+
+    def test_webhook_post_model_validation(self):
+        from pydantic import ValidationError
+        w1 = ModelV2WebhookPost(
+            id="test-webhook-1",
+            url="http://localhost/webhook",
+            method="POST",
+            triggers=["post-create"],
+            acceptable_status_codes=["200"],
+        )
+        self.assertEqual(
+            first=w1.acceptable_status_codes,
+            second=["200"],
+        )
+        w2 = ModelV2WebhookPost(
+            id="test-webhook-1",
+            url="http://localhost/webhook",
+            method="POST",
+            triggers=["post-create"],
+            acceptable_status_codes=["2xx", "201"],
+        )
+        self.assertEqual(
+            first=w2.acceptable_status_codes,
+            second=["2xx", "201"],
+        )
+        with self.assertRaises(
+            expected_exception=ValidationError,
+        ):
+            ModelV2WebhookPost(
+                id="test-webhook-1",
+                url="http://localhost/webhook",
+                method="POST",
+                triggers=["post-create"],
+                acceptable_status_codes=["2xx", 201],
+            )
+        with self.assertRaises(
+            expected_exception=ValidationError,
+        ):
+            ModelV2WebhookPost(
+                id="test-webhook-1",
+                url="http://localhost/webhook",
+                method="POST",
+                triggers=["post-create"],
+                acceptable_status_codes="200",
+            )
+        with self.assertRaises(
+            expected_exception=ValidationError,
+        ):
+            ModelV2WebhookPost(
+                id="test-webhook-1",
+                url="http://localhost/webhook",
+                method="POST",
+                triggers=["post-create"],
+                acceptable_status_codes="200 201 2xx",
+            )
+        with self.assertRaises(
+            expected_exception=ValidationError,
+        ):
+            ModelV2WebhookPost(
+                id="test-webhook-1",
+                url="http://localhost/webhook",
+                method="POST",
+                triggers=["post-create"],
+                acceptable_status_codes="20x",
+            )
+
+    async def test_webhook_timeout_default(self):
+        webhook = ModelV2WebhookGet(
+            id="test-webhook-1",
+            url="http://localhost/webhook",
+            method="POST",
+            triggers=["post-create"],
+        )
+        instance_data = {
+            "id": "inst-1",
+        }
+        self.mock_crud_webhook_logs.create = AsyncMock()
+        mock_response = httpx.Response(
+            status_code=200,
+            request=httpx.Request(
+                method="POST",
+                url="http://localhost",
+            ),
+        )
+        self.mock_http_client.request = AsyncMock(
+            return_value=mock_response,
+        )
+        await self.executor._execute_one(
+            webhook=webhook,
+            trigger="post-create",
+            instance_data=instance_data,
+        )
+        self.mock_http_client.request.assert_called_once()
+        req_kwargs = self.mock_http_client.request.call_args.kwargs
+        self.assertEqual(
+            first=req_kwargs["timeout"],
+            second=5.0,
+        )
+
+    async def test_webhook_timeout_custom(self):
+        webhook = ModelV2WebhookGet(
+            id="test-webhook-1",
+            url="http://localhost/webhook",
+            method="POST",
+            triggers=["post-create"],
+            timeout=12.5,
+        )
+        instance_data = {
+            "id": "inst-1",
+        }
+        self.mock_crud_webhook_logs.create = AsyncMock()
+        mock_response = httpx.Response(
+            status_code=200,
+            request=httpx.Request(
+                method="POST",
+                url="http://localhost",
+            ),
+        )
+        self.mock_http_client.request = AsyncMock(
+            return_value=mock_response,
+        )
+        await self.executor._execute_one(
+            webhook=webhook,
+            trigger="post-create",
+            instance_data=instance_data,
+        )
+        self.mock_http_client.request.assert_called_once()
+        req_kwargs = self.mock_http_client.request.call_args.kwargs
+        self.assertEqual(
+            first=req_kwargs["timeout"],
+            second=12.5,
+        )
+
 
