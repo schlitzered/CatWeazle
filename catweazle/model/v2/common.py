@@ -7,7 +7,6 @@ from pydantic import constr
 from pydantic import Field
 from typing_extensions import Annotated
 
-
 sort_order_literal = Literal[
     "ascending",
     "descending",

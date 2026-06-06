@@ -84,7 +84,7 @@ class Authorize:
         return user
 
     async def require_user(self, request) -> ModelV2UserGet:
-        user = await self.get_user(request)
+        user = await self.get_user(request=request)
         return user
 
     async def require_permission(

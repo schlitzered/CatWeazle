@@ -8,6 +8,7 @@ import pymongo.errors
 
 from catweazle.crud.common import CrudMongo
 
+from catweazle.errors import DuplicateResource
 from catweazle.errors import HostNumRangeExceeded
 
 from catweazle.model.v2.common import ModelV2DataDelete
@@ -21,16 +22,25 @@ from catweazle.model.v2.instances import ModelV2instancePut
 
 class CrudInstances(CrudMongo):
     def __init__(
-        self, log: logging.Logger, coll: AsyncIOMotorCollection, domain_suffix: str
+        self,
+        log: logging.Logger,
+        coll: AsyncIOMotorCollection,
+        domain_suffix: str,
+        instance_create_retries: int = 10,
     ):
         super(CrudInstances, self).__init__(log=log, coll=coll)
         self._domain_suffix = domain_suffix
+        self._instance_create_retries = instance_create_retries
 
     @property
     def domain_suffix(self):
         return self._domain_suffix
 
-    async def _next_num(self, indicator):
+    @property
+    def instance_create_retries(self):
+        return self._instance_create_retries
+
+    async def get_next_num(self, indicator):
         instances = await self.search(dns_indicator=indicator)
         taken = list()
         for instance in instances.result:
@@ -51,19 +61,35 @@ class CrudInstances(CrudMongo):
         self.log.info(f"creating {self.resource_type} indices, done")
 
     async def create(
-        self, _id: str, payload: ModelV2instancePost, fields: list
+        self,
+        _id: str,
+        payload: ModelV2instancePost,
+        fields: list,
     ) -> ModelV2InstanceGet:
         data = payload.model_dump()
         data["id"] = _id
-
-        fqdn = f"{payload.dns_indicator}{self.domain_suffix}"
-        if "NUM" in payload.dns_indicator:
-            number = await self._next_num(payload.dns_indicator)
-            fqdn = f"{payload.dns_indicator.replace('NUM', number)}{self.domain_suffix}"
-        data["fqdn"] = fqdn
         data["ip_address"] = str(payload.ip_address)
-        result = await self._create(fields=fields, payload=data)
-        return ModelV2InstanceGet(**result)
+
+        if "NUM" not in payload.dns_indicator:
+            data["fqdn"] = f"{payload.dns_indicator}{self.domain_suffix}"
+            result = await self._create(fields=fields, payload=data)
+            return ModelV2InstanceGet(**result)
+
+        last_err = None
+        for attempt in range(self.instance_create_retries):
+            number = await self.get_next_num(payload.dns_indicator)
+            fqdn = f"{payload.dns_indicator.replace('NUM', number)}{self.domain_suffix}"
+            data["fqdn"] = fqdn
+            try:
+                result = await self._create(fields=fields, payload=data)
+                return ModelV2InstanceGet(**result)
+            except DuplicateResource as err:
+                self.log.warning(
+                    f"instance create attempt {attempt + 1}/{self.instance_create_retries} "
+                    f"failed due to duplicate fqdn {fqdn}, retrying"
+                )
+                last_err = err
+        raise last_err
 
     async def delete(
         self,

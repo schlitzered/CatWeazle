@@ -89,3 +89,14 @@ class HostNumRangeExceeded(HTTPException):
 class QueryParamValidationError(HTTPException):
     def __init__(self, msg):
         super(QueryParamValidationError, self).__init__(status_code=422, detail=msg)
+
+
+class WebhookExecutionError(HTTPException):
+    def __init__(
+        self,
+        webhook_id,
+    ):
+        super(WebhookExecutionError, self).__init__(
+            status_code=400,
+            detail=f"Webhook {webhook_id} execution failed",
+        )

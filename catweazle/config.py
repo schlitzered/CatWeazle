@@ -17,11 +17,14 @@ class ConfigApp(BaseModel):
     host: str = "127.0.0.1"
     port: int = 8000
     secretkey: str = "secret"
+    encryptionkey: str = "secret"
     indicatorregex: str = "^.*NUM.*$"
     domainsuffix: str = ".example.com"
     proxyheaders: typing.Optional[bool] = False
     forwardedallowips: typing.Optional[str] = "127.0.0.0/8"
     bypassIpCheck: bool = False
+    instancecreateretries: int = 10
+    webhooklogttl: int = 86400
 
 
 class ConfigLdap(BaseModel):

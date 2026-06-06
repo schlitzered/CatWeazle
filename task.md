@@ -1,0 +1,13 @@
+- [x] Create `tests/` directory structure with `__init__.py`
+- [x] Implement `tests/test_authorize.py`
+- [x] Implement `tests/test_webhook_executor.py`
+- [x] Implement `tests/test_endpoint_authenticate.py`
+- [x] Implement `tests/test_endpoint_users.py`
+- [x] Implement `tests/test_endpoint_users_credentials.py`
+- [x] Implement `tests/test_endpoint_instances.py`
+- [x] Implement `tests/test_endpoint_permissions.py`
+- [x] Implement `tests/test_endpoint_secrets.py`
+- [x] Implement `tests/test_endpoint_webhooks.py`
+- [x] Implement `tests/test_endpoint_webhook_logs.py`
+- [x] Set up GitHub Actions workflow in `.github/workflows/test.yml`
+- [x] Run and verify tests locally

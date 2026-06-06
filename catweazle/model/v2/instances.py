@@ -7,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel
 from pydantic import StrictStr
 from pydantic import field_validator
-from pydantic.networks import IPv4Address
+from pydantic.networks import IPvAnyAddress
 
 from catweazle.model.v2.common import ModelV2MetaMulti
 from catweazle.config import Config
@@ -37,7 +37,7 @@ class ModelV2InstanceGet(BaseModel):
     id: Optional[StrictStr] = None
     dns_indicator: Optional[StrictStr] = None
     fqdn: Optional[StrictStr] = None
-    ip_address: Optional[StrictStr] = None
+    ip_address: Optional[IPvAnyAddress] = None
     ipa_otp: Optional[StrictStr] = None
     meta: Optional[Dict[str, str]] = None
 
@@ -48,8 +48,8 @@ class ModelV2InstanceGetMulti(BaseModel):
 
 
 class ModelV2instancePost(BaseModel):
-    dns_indicator: Optional[StrictStr] = None
-    ip_address: IPv4Address
+    dns_indicator: StrictStr
+    ip_address: IPvAnyAddress
     meta: Optional[Dict[str, str]] = None
 
     @staticmethod

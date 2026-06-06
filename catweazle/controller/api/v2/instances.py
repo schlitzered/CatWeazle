@@ -1,6 +1,7 @@
 import logging
 from typing import List
 from typing import Set
+import httpx
 
 from fastapi import APIRouter
 from fastapi import Query
@@ -12,7 +13,12 @@ from catweazle.errors import SessionCredentialError
 
 from catweazle.crud.instances import CrudInstances
 from catweazle.crud.foreman import CrudForeman
+from catweazle.crud.secrets import CrudSecrets
+from catweazle.crud.webhooks import CrudWebhooks
+from catweazle.crud.webhook_logs import CrudWebhookLogs
+from catweazle.controller.webhook_executor import WebhookExecutor
 from catweazle.errors import BackendError
+from catweazle.errors import WebhookExecutionError
 
 from catweazle.model.v2.common import ModelV2DataDelete
 from catweazle.model.v2.common import filter_complex_search
@@ -24,6 +30,7 @@ from catweazle.model.v2.instances import ModelV2InstanceGet
 from catweazle.model.v2.instances import ModelV2InstanceGetMulti
 from catweazle.model.v2.instances import ModelV2instancePost
 from catweazle.model.v2.instances import ModelV2instancePut
+from catweazle.model.v2.permissions import ModelV2Permission
 
 
 class ControllerApiV2Instances:
@@ -34,13 +41,28 @@ class ControllerApiV2Instances:
         authorize: Authorize,
         crud_instances: CrudInstances,
         crud_foreman_backends: List[CrudForeman],
+        crud_secrets: CrudSecrets,
+        crud_webhooks: CrudWebhooks,
+        crud_webhook_logs: CrudWebhookLogs,
+        http_client: httpx.AsyncClient,
         bypass_ip_check: bool = False,
     ):
         self._authorize = authorize
         self._bypass_ip_check = bypass_ip_check
         self._crud_instances = crud_instances
         self._crud_foreman_backends = crud_foreman_backends
+        self._crud_secrets = crud_secrets
+        self._crud_webhooks = crud_webhooks
+        self._crud_webhook_logs = crud_webhook_logs
+        self._http_client = http_client
         self._log = log
+        self._webhook_executor = WebhookExecutor(
+            log=log,
+            crud_webhooks=crud_webhooks,
+            crud_secrets=crud_secrets,
+            crud_webhook_logs=crud_webhook_logs,
+            http_client=http_client,
+        )
         self._router = APIRouter(
             prefix="/instances",
             tags=["instances"],
@@ -100,6 +122,18 @@ class ControllerApiV2Instances:
         return self._crud_foreman_backends
 
     @property
+    def crud_secrets(self):
+        return self._crud_secrets
+
+    @property
+    def crud_webhooks(self):
+        return self._crud_webhooks
+
+    @property
+    def http_client(self):
+        return self._http_client
+
+    @property
     def log(self):
         return self._log
 
@@ -115,12 +149,29 @@ class ControllerApiV2Instances:
         fields: Set[filter_literal] = Query(default=filter_list),
     ):
         await self.authorize.require_permission(
-            request=request, permission="INSTANCE:POST"
+            request=request,
+            permission=ModelV2Permission.INSTANCE_POST,
         )
 
         instance = await self.crud_instances.create(
             _id=instance_id, payload=data, fields=list(fields)
         )
+
+        try:
+            await self._webhook_executor.execute(
+                trigger="pre-create",
+                instance_data=instance.model_dump(),
+            )
+        except (
+            WebhookExecutionError,
+            BackendError,
+        ) as err:
+            await self.delete(
+                instance_id=instance_id,
+                request=request,
+            )
+            raise err
+
         for foreman in self.crud_foreman_backends:
             try:
                 await foreman.create_dns(
@@ -139,15 +190,39 @@ class ControllerApiV2Instances:
                     request=request,
                 )
                 raise err
+
+        try:
+            await self._webhook_executor.execute(
+                trigger="post-create",
+                instance_data=instance.model_dump(),
+            )
+        except (
+            WebhookExecutionError,
+            BackendError,
+        ) as err:
+            await self.delete(
+                instance_id=instance_id,
+                request=request,
+            )
+            raise err
+
         return instance
 
     async def delete(self, request: Request, instance_id: str):
         await self.authorize.require_permission(
-            request=request, permission="INSTANCE:DELETE"
+            request=request,
+            permission=ModelV2Permission.INSTANCE_DELETE,
         )
         instance = await self.crud_instances.get(
-            _id=instance_id, fields=["fqdn", "ip_address"]
+            _id=instance_id, fields=list(filter_list)
         )
+        instance_data = instance.model_dump()
+
+        await self._webhook_executor.execute(
+            trigger="pre-delete",
+            instance_data=instance_data,
+        )
+
         for foreman in self.crud_foreman_backends:
             try:
                 await foreman.delete_dns(
@@ -162,7 +237,14 @@ class ControllerApiV2Instances:
                 )
             except BackendError:
                 pass
-        return await self.crud_instances.delete(_id=instance_id)
+
+        await self._webhook_executor.execute(
+            trigger="post-delete",
+            instance_data=instance_data,
+        )
+        result = await self.crud_instances.delete(_id=instance_id)
+
+        return result
 
     async def get(
         self,
@@ -234,7 +316,8 @@ class ControllerApiV2Instances:
         fields: Set[filter_literal] = Query(default=filter_list),
     ):
         await self.authorize.require_permission(
-            request=request, permission="INSTANCE:POST"
+            request=request,
+            permission=ModelV2Permission.INSTANCE_POST,
         )
         return await self.crud_instances.update(
             _id=instance_id, payload=data, fields=list(fields)
